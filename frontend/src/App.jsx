@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 import Login from "./pages/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import LecturerDashboard from "./pages/LecturerDashboard";
-import StudentDashboard from "./pages/StudentDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
+import StudentDashboard from "./pages/student/StudentDashboard";
 
 import "./App.css";
 

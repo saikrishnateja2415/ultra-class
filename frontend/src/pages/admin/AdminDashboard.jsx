@@ -1,7 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
+import Header from "../../components/Header";
 
-function AdminDashboard() {
+function AdminDashboard({ user, logout }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,9 +30,11 @@ function AdminDashboard() {
   };
 
   return (
+
+    <div className="admin-page">
+    <Header user={user} logout={logout} />
     <div className="dashboard">
       <div className="dashboard-header">
-        <h1>Admin Dashboard</h1>
         <h3>Create Lecturer and Student Accounts</h3>
       </div>
 
@@ -83,6 +86,7 @@ function AdminDashboard() {
           Create User
         </button>
       </div>
+    </div>
     </div>
   );
 }

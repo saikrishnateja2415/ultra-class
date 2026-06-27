@@ -1,0 +1,235 @@
+.student-page {
+  height: 100vh;
+  background: #f4f7fb;
+  overflow: hidden;
+}
+
+.student-shell {
+  height: calc(100vh - 82px);
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 22px;
+  padding: 22px;
+  overflow: hidden;
+}
+
+.student-sidebar {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: fit-content;
+}
+
+.student-sidebar button {
+  background: #f3f4f6;
+  color: #111827;
+  text-align: left;
+  border-radius: 14px;
+  padding: 15px 18px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.student-sidebar button:hover,
+.student-nav-active {
+  background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
+  color: white !important;
+}
+
+.student-content {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.student-welcome-card,
+.student-card {
+  background: white;
+  border-radius: 26px;
+  padding: 32px;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+  margin-bottom: 22px;
+}
+
+.student-welcome-card h1 {
+  font-size: 36px;
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+.student-welcome-card p,
+.student-card p {
+  color: #6b7280;
+  font-size: 17px;
+}
+
+.student-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.student-stat-card {
+  background: white;
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+  border-left: 5px solid #2563eb;
+}
+
+.student-stat-card h3 {
+  font-size: 16px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.student-stat-card strong {
+  font-size: 28px;
+  color: #111827;
+}
+
+.student-quick-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.student-quick-actions button,
+.student-card button {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 24px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.student-card h2 {
+  font-size: 28px;
+  margin-bottom: 14px;
+  color: #111827;
+}
+
+.student-card input {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  margin: 18px 0;
+  font-size: 16px;
+  background: #f8fafc;
+}
+
+.student-session-details {
+  background: #f8fafc;
+  border-left: 5px solid #2563eb;
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 18px;
+}
+
+.student-session-details h3 {
+  margin-bottom: 14px;
+  color: #111827;
+}
+
+.student-session-details p {
+  margin-bottom: 10px;
+}
+
+.student-session-details span {
+  display: inline-block;
+  margin-top: 10px;
+  background: #dcfce7;
+  color: #166534;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.ask-question-card {
+  margin-top: 22px;
+  background: #f8fafc;
+  border-radius: 22px;
+  padding: 26px;
+}
+
+.ask-question-card h2 {
+  margin-bottom: 10px;
+}
+
+.ask-question-card textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 15px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  resize: vertical;
+  font-size: 16px;
+  margin: 16px 0;
+}
+
+.ask-question-card textarea:focus,
+.student-card input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: white;
+}
+
+.student-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.student-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.student-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (max-width: 1000px) {
+  .student-shell {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .student-sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .student-sidebar button {
+    white-space: nowrap;
+  }
+
+  .student-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-content {
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 600px) {
+  .student-shell {
+    padding: 14px;
+  }
+
+  .student-welcome-card,
+  .student-card {
+    padding: 22px;
+  }
+
+  .student-welcome-card h1 {
+    font-size: 28px;
+  }
+}
