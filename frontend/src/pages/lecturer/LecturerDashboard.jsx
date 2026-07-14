@@ -5,38 +5,68 @@ import Header from "../../components/Header";
 import "./LecturerDashboard.css";
 import SessionDetails from "./SessionDetails";
 import ManageQuestions from "./ManageQuestions";
+import AnalyticsDashboard from "./AnalyticsDashboard";
+import Attendance from "./Attendance";
 
 function LecturerDashboard({ user, logout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [title, setTitle] = useState("");
   const [moduleCode, setModuleCode] = useState("");
   const [sessions, setSessions] = useState([]);
+  const [allQuestions, setAllQuestions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
 
   const fetchSessions = async () => {
     try {
       const lecturerId = user?.id || user?._id;
-
-      if (!lecturerId) {
-        console.log("Lecturer ID not ready yet");
-        return;
-      }
+      if (!lecturerId) return;
 
       const res = await axios.get(
         `http://localhost:5000/lecturer/sessions/${lecturerId}`
       );
 
-      setSessions(res.data.sessions || []);
+      const lecturerSessions = res.data.sessions || [];
+      setSessions(lecturerSessions);
+      fetchAllQuestions(lecturerSessions);
     } catch (error) {
       console.log(error);
       alert("Error loading sessions");
     }
   };
 
-  useEffect(() => {
-    if (user?.id || user?._id) {
-      fetchSessions();
+  const fetchAllQuestions = async (lecturerSessions) => {
+    try {
+      let questionData = [];
+
+      for (const session of lecturerSessions) {
+        const res = await axios.get(
+          `http://localhost:5000/questions/${session._id}`
+        );
+
+        const sessionQuestions = (res.data.questions || []).map((q) => ({
+          ...q,
+          sessionTitle: session.title,
+          moduleCode: session.moduleCode,
+          sessionCode: session.sessionCode,
+        }));
+
+        questionData = [...questionData, ...sessionQuestions];
+      }
+
+      setAllQuestions(questionData);
+    } catch (error) {
+      console.log(error);
     }
+  };
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (user?.id || user?._id) {
+        await fetchSessions();
+      }
+    };
+
+    loadSessions();
   }, [user]);
 
   const createSession = async () => {
@@ -78,8 +108,47 @@ function LecturerDashboard({ user, logout }) {
     }
   };
 
+  const isAnswered = (q) => {
+    return q.status === "Answered" || (q.answer && q.answer.trim() !== "");
+  };
+
   const totalSessions = sessions.length;
   const activeSessions = sessions.filter((s) => s.status === "active").length;
+  const totalQuestions = allQuestions.length;
+  const answeredQuestions = allQuestions.filter(isAnswered).length;
+  const pendingQuestions = allQuestions.filter((q) => !isAnswered(q)).length;
+  const pinnedQuestions = allQuestions.filter((q) => q.pinned).length;
+
+  const engagementScore =
+    totalSessions === 0
+      ? 0
+      : Math.min(
+        100,
+        Math.round(
+          ((totalQuestions * 5 + answeredQuestions * 3 + pinnedQuestions * 2) /
+            totalSessions)
+        )
+      );
+
+  const recentSessions = sessions.slice(0, 3);
+
+  const answerRate =
+    totalQuestions === 0 ? 0 : Math.round((answeredQuestions / totalQuestions) * 100);
+
+  const pendingRate =
+    totalQuestions === 0 ? 0 : Math.round((pendingQuestions / totalQuestions) * 100);
+
+  const mostActiveSession = sessions
+    .map((session) => ({
+      ...session,
+      questionCount: allQuestions.filter(
+        (q) => q.sessionCode === session.sessionCode
+      ).length,
+    }))
+    .sort((a, b) => b.questionCount - a.questionCount)[0];
+
+  const answeredDegree = totalQuestions === 0 ? 0 : Math.round((answeredQuestions / totalQuestions) * 360);
+  const pendingDegree = totalQuestions === 0 ? 0 : Math.round((pendingQuestions / totalQuestions) * 360);
 
   return (
     <div className="lecturer-page">
@@ -117,15 +186,31 @@ function LecturerDashboard({ user, logout }) {
             Create Session
           </button>
 
-          <button onClick={() => setActiveTab("participants")}>
+          <button
+            className={activeTab === "participants" ? "nav-active" : ""}
+            onClick={() => setActiveTab("participants")}
+          >
             Participants
           </button>
 
-          <button onClick={() => setActiveTab("analytics")}>
+          <button
+            className={activeTab === "attendance" ? "nav-active" : ""}
+            onClick={() => setActiveTab("attendance")}
+          >
+            Attendance
+          </button>
+
+          <button
+            className={activeTab === "analytics" ? "nav-active" : ""}
+            onClick={() => setActiveTab("analytics")}
+          >
             Analytics
           </button>
 
-          <button onClick={() => setActiveTab("settings")}>
+          <button
+            className={activeTab === "settings" ? "nav-active" : ""}
+            onClick={() => setActiveTab("settings")}
+          >
             Settings
           </button>
         </aside>
@@ -135,10 +220,12 @@ function LecturerDashboard({ user, logout }) {
             <>
               <div className="welcome-card">
                 <h1>Welcome back, {user?.name}</h1>
-                <p>Manage sessions, QR access, students, and classroom activity.</p>
+                <p>
+                  Manage sessions, student questions, classroom activity, and engagement analytics.
+                </p>
               </div>
 
-              <div className="stats-grid">
+              <div className="stats-grid analytics-stats-grid">
                 <div className="stat-card">
                   <h3>Total Sessions</h3>
                   <strong>{totalSessions}</strong>
@@ -150,14 +237,86 @@ function LecturerDashboard({ user, logout }) {
                 </div>
 
                 <div className="stat-card">
-                  <h3>QR Enabled</h3>
-                  <strong>{totalSessions}</strong>
+                  <h3>Total Questions</h3>
+                  <strong>{totalQuestions}</strong>
                 </div>
 
                 <div className="stat-card">
-                  <h3>Students Joined</h3>
-                  <strong>0</strong>
+                  <h3>Answered</h3>
+                  <strong>{answeredQuestions}</strong>
                 </div>
+
+                <div className="stat-card">
+                  <h3>Pending</h3>
+                  <strong>{pendingQuestions}</strong>
+                </div>
+
+                <div className="stat-card">
+                  <h3>Pinned</h3>
+                  <strong>{pinnedQuestions}</strong>
+                </div>
+
+                <div className="stat-card engagement-card">
+                  <h3>Engagement Score</h3>
+                  <strong>{engagementScore}%</strong>
+                </div>
+
+                <div className="stat-card">
+                  <h3>QR Enabled</h3>
+                  <strong>{totalSessions}</strong>
+                </div>
+              </div>
+
+              <div className="dashboard-two-column">
+                <section className="dashboard-panel">
+                  <div className="panel-header">
+                    <h2>Recent Sessions</h2>
+                    <button onClick={() => setActiveTab("sessions")}>View All</button>
+                  </div>
+
+                  {recentSessions.length === 0 ? (
+                    <p>No sessions created yet.</p>
+                  ) : (
+                    recentSessions.map((session) => (
+                      <div className="recent-session-row" key={session._id}>
+                        <div>
+                          <h3>{session.title}</h3>
+                          <p>
+                            {session.moduleCode} • {session.sessionCode}
+                          </p>
+                        </div>
+                        <span>{session.status}</span>
+                      </div>
+                    ))
+                  )}
+                </section>
+
+                <section className="dashboard-panel">
+                  <div className="panel-header">
+                    <h2>Analytics Preview</h2>
+                    <button onClick={() => setActiveTab("analytics")}>Open</button>
+                  </div>
+
+                  <div className="analytics-preview-box">
+                    <p>Answer Rate</p>
+                    <h3>
+                      {totalQuestions === 0
+                        ? 0
+                        : Math.round((answeredQuestions / totalQuestions) * 100)}
+                      %
+                    </h3>
+                  </div>
+
+                  <div className="analytics-preview-box">
+                    <p>Pending Rate</p>
+                    <h3>
+                      {totalQuestions === 0
+                        ? 0
+                        : Math.round((pendingQuestions / totalQuestions) * 100)}
+                      %
+                    </h3>
+                  </div>
+                </section>
               </div>
 
               <div className="quick-actions">
@@ -166,6 +325,9 @@ function LecturerDashboard({ user, logout }) {
                 </button>
                 <button onClick={() => setActiveTab("sessions")}>
                   View Sessions
+                </button>
+                <button onClick={() => setActiveTab("analytics")}>
+                  View Analytics
                 </button>
               </div>
             </>
@@ -255,11 +417,23 @@ function LecturerDashboard({ user, logout }) {
           )}
 
           {activeTab === "analytics" && (
-            <section className="main-card">
-              <h2>Analytics</h2>
-              <p>Attendance, questions, polls, and engagement reports will be shown here.</p>
-            </section>
+            <AnalyticsDashboard
+              sessions={sessions}
+              allQuestions={allQuestions}
+              totalQuestions={totalQuestions}
+              answeredQuestions={answeredQuestions}
+              pendingQuestions={pendingQuestions}
+              pinnedQuestions={pinnedQuestions}
+              engagementScore={engagementScore}
+              answerRate={answerRate}
+              pendingRate={pendingRate}
+              mostActiveSession={mostActiveSession}
+              answeredDegree={answeredDegree}
+              pendingDegree={pendingDegree}
+            />
           )}
+
+          {activeTab === "attendance" && <Attendance />}
 
           {activeTab === "settings" && (
             <section className="main-card">

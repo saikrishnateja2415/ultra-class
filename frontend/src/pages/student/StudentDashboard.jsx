@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import "./StudentDashboard.css";
 import Header from "../../components/Header";
+import MyQuestions from "./MyQuestions";
 
 function StudentDashboard({ user, logout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sessionCode, setSessionCode] = useState("");
   const [joinedSession, setJoinedSession] = useState(null);
   const [questionText, setQuestionText] = useState("");
+  const [sessionQuestions, setSessionQuestions] = useState([]);
+  const [myQuestions, setMyQuestions] = useState([]);
 
   const joinSession = async () => {
     if (!sessionCode.trim()) {
@@ -32,6 +35,36 @@ function StudentDashboard({ user, logout }) {
     }
   };
 
+  const fetchSessionQuestions = async () => {
+    if (!joinedSession?._id) return;
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/questions/${joinedSession._id}`
+      );
+
+      setSessionQuestions(res.data.questions || []);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchMyQuestions = async () => {
+    try {
+      const studentId = user?.id || user?._id;
+      if (!studentId) return;
+
+      const res = await axios.get(
+        `http://localhost:5000/student/questions/${studentId}`
+      );
+
+      setMyQuestions(res.data.questions || []);
+    } catch (error) {
+      console.log(error);
+      alert("Error loading my questions");
+    }
+  };
+
   const submitQuestion = async () => {
     if (!joinedSession) {
       alert("Please join a session first");
@@ -53,12 +86,34 @@ function StudentDashboard({ user, logout }) {
       });
 
       setQuestionText("");
+      fetchSessionQuestions();
+      fetchMyQuestions();
       alert("Question submitted anonymously");
     } catch (error) {
       console.log(error);
       alert("Error submitting question");
     }
   };
+
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (joinedSession?._id) {
+        await fetchSessionQuestions();
+      }
+    };
+
+    loadQuestions();
+  }, [joinedSession?._id]);
+
+  useEffect(() => {
+    const loadMyQuestions = async () => {
+      if (user?.id || user?._id) {
+        await fetchMyQuestions();
+      }
+    };
+
+    loadMyQuestions();
+  }, [user?.id, user?._id]);
 
   return (
     <div className="student-page">
@@ -89,7 +144,10 @@ function StudentDashboard({ user, logout }) {
 
           <button
             className={activeTab === "questions" ? "student-nav-active" : ""}
-            onClick={() => setActiveTab("questions")}
+            onClick={() => {
+              setActiveTab("questions");
+              fetchMyQuestions();
+            }}
           >
             My Questions
           </button>
@@ -107,7 +165,10 @@ function StudentDashboard({ user, logout }) {
             <>
               <section className="student-welcome-card">
                 <h1>Welcome back, {user?.name}</h1>
-                <p>Join classroom sessions, ask anonymous questions, and follow live learning activities.</p>
+                <p>
+                  Join classroom sessions, ask anonymous questions, and follow
+                  live learning activities.
+                </p>
               </section>
 
               <div className="student-stats-grid">
@@ -123,7 +184,7 @@ function StudentDashboard({ user, logout }) {
 
                 <div className="student-stat-card">
                   <h3>Questions Asked</h3>
-                  <strong>0</strong>
+                  <strong>{myQuestions.length}</strong>
                 </div>
               </div>
 
@@ -165,9 +226,16 @@ function StudentDashboard({ user, logout }) {
                 <>
                   <div className="student-session-details">
                     <h3>{joinedSession.title}</h3>
-                    <p><strong>Module:</strong> {joinedSession.moduleCode}</p>
-                    <p><strong>Session Code:</strong> {joinedSession.sessionCode}</p>
-                    <p><strong>Lecturer:</strong> {joinedSession.lecturerName}</p>
+                    <p>
+                      <strong>Module:</strong> {joinedSession.moduleCode}
+                    </p>
+                    <p>
+                      <strong>Session Code:</strong>{" "}
+                      {joinedSession.sessionCode}
+                    </p>
+                    <p>
+                      <strong>Lecturer:</strong> {joinedSession.lecturerName}
+                    </p>
                     <span>{joinedSession.status}</span>
                   </div>
 
@@ -181,9 +249,33 @@ function StudentDashboard({ user, logout }) {
                       onChange={(e) => setQuestionText(e.target.value)}
                     />
 
-                    <button onClick={submitQuestion}>
-                      Submit Question
-                    </button>
+                    <button onClick={submitQuestion}>Submit Question</button>
+                  </div>
+
+                  <div className="student-questions-card">
+                    <h2>Session Questions & Answers</h2>
+
+                    {sessionQuestions.length === 0 ? (
+                      <p>No questions submitted yet.</p>
+                    ) : (
+                      sessionQuestions.map((item) => (
+                        <div className="student-question-item" key={item._id}>
+                          <h3>{item.question}</h3>
+                          <span>{item.status}</span>
+
+                          {item.answer ? (
+                            <div className="student-answer-box">
+                              <strong>Lecturer Answer:</strong>
+                              <p>{item.answer}</p>
+                            </div>
+                          ) : (
+                            <p className="no-answer-text">
+                              Waiting for lecturer answer...
+                            </p>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </>
               )}
@@ -191,10 +283,7 @@ function StudentDashboard({ user, logout }) {
           )}
 
           {activeTab === "questions" && (
-            <section className="student-card">
-              <h2>My Questions</h2>
-              <p>Your submitted questions will appear here later.</p>
-            </section>
+            <MyQuestions myQuestions={myQuestions} />
           )}
 
           {activeTab === "settings" && (
