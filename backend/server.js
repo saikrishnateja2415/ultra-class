@@ -8,6 +8,11 @@ const User = require("./models/User");
 const authRoutes = require("./routes/authRoutes");
 const sessionRoutes = require("./routes/sessionRoutes");
 const questionRoutes = require("./routes/questionRoutes");
+const courseRoutes = require("./routes/courseRoutes");
+const subjectRoutes = require("./routes/subjectRoutes");
+const studentRoutes = require("./routes/studentRoutes");
+const staffRoutes = require("./routes/staffRoutes");
+const adminSettingsRoutes = require("./routes/adminSettingsRoutes");
 
 const app = express();
 
@@ -54,6 +59,11 @@ app.get("/", (req, res) => {
 app.use("/", authRoutes);
 app.use("/", sessionRoutes);
 app.use("/", questionRoutes);
+app.use("/", courseRoutes);
+app.use("/", subjectRoutes);
+app.use("/", studentRoutes);
+app.use("/", staffRoutes);
+app.use("/", adminSettingsRoutes);
 
 const PORT = 5000;
 

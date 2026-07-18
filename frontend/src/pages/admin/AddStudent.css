@@ -1,0 +1,365 @@
+.add-student-page {
+  padding: 28px;
+}
+
+.add-student-heading {
+  margin-bottom: 22px;
+}
+
+.add-student-page-label {
+  margin: 0 0 6px;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.add-student-heading h2 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 28px;
+}
+
+.add-student-heading > p:last-child {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.add-student-card {
+  padding: 28px;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.add-student-message {
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.add-student-message.success {
+  border: 1px solid #bbebcc;
+  background: #ecf9f1;
+  color: #17663a;
+}
+
+.add-student-message.error {
+  border: 1px solid #f2c5c5;
+  background: #fff0f0;
+  color: #9b2727;
+}
+
+.add-student-section {
+  margin-bottom: 32px;
+}
+
+.add-student-section-heading {
+  margin-bottom: 19px;
+}
+
+.add-student-section-heading h3,
+.student-subjects-header h3 {
+  margin: 0 0 6px;
+  color: #1f2937;
+  font-size: 19px;
+}
+
+.add-student-section-heading p,
+.student-subjects-header p {
+  margin: 0;
+  color: #7b8190;
+  font-size: 13px;
+}
+
+.add-student-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.add-student-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-student-form-group label {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.add-student-form-group label span {
+  color: #dc2626;
+}
+
+.add-student-form-group input,
+.add-student-form-group select {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid #dfe3eb;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1f2937;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.add-student-form-group input:focus,
+.add-student-form-group select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.course-selection {
+  max-width: 720px;
+}
+
+.selected-student-course {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #e0e4ff;
+  border-radius: 12px;
+  background: #f7f7ff;
+}
+
+.selected-student-course div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.selected-student-course span {
+  color: #7b8190;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.selected-student-course strong {
+  color: #252d3f;
+  font-size: 13px;
+}
+
+.selected-student-course p {
+  margin: 0;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.student-subjects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.student-select-all-button {
+  min-height: 39px;
+  padding: 8px 13px;
+  border: 1px solid #cfd4ff;
+  border-radius: 8px;
+  background: #f4f5ff;
+  color: #4f46e5;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.student-subject-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid #e3e6ed;
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.student-subject-card:hover {
+  border-color: #b9bdf5;
+}
+
+.student-subject-card.selected {
+  border-color: #6366f1;
+  background: #f4f5ff;
+}
+
+.student-subject-card input {
+  width: 17px;
+  height: 17px;
+  margin-top: 3px;
+  accent-color: #4f46e5;
+}
+
+.student-subject-content {
+  flex: 1;
+}
+
+.student-subject-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-subject-title strong {
+  color: #20283a;
+  font-size: 14px;
+}
+
+.student-subject-title span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #eef0ff;
+  color: #4f46e5;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.student-subject-content > p {
+  margin: 7px 0 11px;
+  color: #7b8190;
+  font-size: 12px;
+}
+
+.student-subject-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.student-subject-meta span {
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #f3f4f6;
+  color: #5f6675;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.student-subject-empty-state {
+  padding: 28px;
+  border: 1px dashed #d7dae3;
+  border-radius: 11px;
+  background: #fafbfc;
+  color: #7b8190;
+  text-align: center;
+}
+
+.add-student-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 22px;
+  border-top: 1px solid #eceef3;
+  color: #737a8a;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.add-student-action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.add-student-clear-button,
+.add-student-submit-button {
+  min-width: 145px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-student-clear-button {
+  border: 1px solid #dfe3eb;
+  background: #ffffff;
+  color: #4b5563;
+}
+
+.add-student-submit-button {
+  border: none;
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.add-student-submit-button:hover {
+  background: #4338ca;
+}
+
+.add-student-clear-button:disabled,
+.add-student-submit-button:disabled,
+.add-student-form-group input:disabled,
+.add-student-form-group select:disabled,
+.student-select-all-button:disabled,
+.student-subject-card input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 900px) {
+  .selected-student-course {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .add-student-page {
+    padding: 18px 12px;
+  }
+
+  .add-student-card {
+    padding: 20px 15px;
+  }
+
+  .add-student-form-grid,
+  .student-subject-grid,
+  .selected-student-course {
+    grid-template-columns: 1fr;
+  }
+
+  .student-subjects-header,
+  .add-student-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .add-student-action-buttons {
+    flex-direction: column-reverse;
+  }
+
+  .add-student-clear-button,
+  .add-student-submit-button {
+    width: 100%;
+  }
+}
