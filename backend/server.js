@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -8,6 +10,7 @@ const User = require("./models/User");
 const authRoutes = require("./routes/authRoutes");
 const sessionRoutes = require("./routes/sessionRoutes");
 const questionRoutes = require("./routes/questionRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 const courseRoutes = require("./routes/courseRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const studentRoutes = require("./routes/studentRoutes");
@@ -59,6 +62,7 @@ app.get("/", (req, res) => {
 app.use("/", authRoutes);
 app.use("/", sessionRoutes);
 app.use("/", questionRoutes);
+app.use(aiRoutes);
 app.use("/", courseRoutes);
 app.use("/", subjectRoutes);
 app.use("/", studentRoutes);
