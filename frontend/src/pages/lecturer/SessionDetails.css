@@ -144,3 +144,17 @@
   background: #e2e8f0;
   color: #475569;
 }
+
+
+.details-engagement-btn {
+  background: linear-gradient(
+    135deg,
+    #0ea5e9,
+    #7c3aed
+  ) !important;
+}
+
+.details-engagement-btn:hover {
+  box-shadow: 0 10px 22px
+    rgba(14, 165, 233, 0.24);
+}

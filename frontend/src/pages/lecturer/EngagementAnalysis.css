@@ -1,0 +1,691 @@
+.engagement-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.engagement-back-button {
+  align-self: flex-start;
+  border: 1px solid #dbe3f0;
+  border-radius: 13px;
+  padding: 12px 18px;
+  background: #ffffff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.engagement-back-button:hover {
+  border-color: #6366f1;
+  color: #4f46e5;
+  transform: translateX(-2px);
+}
+
+.engagement-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 30px;
+  border: 1px solid #d8d5ff;
+  border-left: 6px solid #6d4aff;
+  border-radius: 26px;
+  background: linear-gradient(
+    135deg,
+    #f5f3ff,
+    #eef2ff
+  );
+  box-shadow: 0 12px 32px
+    rgba(79, 70, 229, 0.08);
+}
+
+.engagement-feature-label {
+  display: block;
+  margin-bottom: 10px;
+  color: #6d4aff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.engagement-hero h1 {
+  margin: 0 0 9px;
+  color: #0f172a;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.engagement-hero p {
+  margin: 0;
+  color: #64748b;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.engagement-score-box {
+  min-width: 190px;
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #7c3aed
+  );
+  color: #ffffff;
+  text-align: center;
+  box-shadow: 0 12px 25px
+    rgba(79, 70, 229, 0.22);
+}
+
+.engagement-score-box span,
+.engagement-score-box strong,
+.engagement-score-box small {
+  display: block;
+}
+
+.engagement-score-box span {
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.engagement-score-box strong {
+  margin-bottom: 5px;
+  font-size: 36px;
+}
+
+.engagement-score-box small {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.engagement-session-banner {
+  display: grid;
+  grid-template-columns: repeat(
+    4,
+    minmax(0, 1fr)
+  );
+  gap: 15px;
+}
+
+.engagement-session-banner div {
+  padding: 17px;
+  border: 1px solid #e2e8f0;
+  border-radius: 17px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.engagement-session-banner span {
+  display: block;
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.engagement-session-banner strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.engagement-session-status {
+  color: #166534 !important;
+  text-transform: capitalize;
+}
+
+.engagement-error {
+  padding: 15px 18px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.engagement-state-card,
+.engagement-not-generated {
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 10px 28px
+    rgba(15, 23, 42, 0.06);
+}
+
+.engagement-state-card h2,
+.engagement-not-generated h2 {
+  margin: 18px 0 9px;
+  color: #0f172a;
+}
+
+.engagement-state-card p,
+.engagement-not-generated p {
+  max-width: 650px;
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.engagement-not-generated ul {
+  max-width: 600px;
+  margin: 22px 0;
+  padding: 18px 24px 18px 44px;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #475569;
+  text-align: left;
+  line-height: 1.8;
+}
+
+.engagement-not-generated button,
+.engagement-analysis-toolbar button {
+  border: none;
+  border-radius: 14px;
+  padding: 14px 23px;
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #7c3aed
+  );
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.engagement-not-generated button:hover,
+.engagement-analysis-toolbar button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px
+    rgba(79, 70, 229, 0.22);
+}
+
+.engagement-not-generated button:disabled,
+.engagement-analysis-toolbar button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.engagement-ai-icon {
+  display: flex;
+  width: 68px;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #c026d3
+  );
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px
+    rgba(124, 58, 237, 0.2);
+}
+
+.engagement-loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #e0e7ff;
+  border-top-color: #5b4bea;
+  border-radius: 50%;
+  animation: engagement-spin 0.8s
+    linear infinite;
+}
+
+@keyframes engagement-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.engagement-analysis-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.engagement-analysis-toolbar h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.engagement-analysis-toolbar p {
+  margin: 0;
+  color: #64748b;
+}
+
+.engagement-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    4,
+    minmax(0, 1fr)
+  );
+  gap: 16px;
+}
+
+.engagement-metric-card {
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #6366f1;
+  border-radius: 19px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.engagement-metric-card span {
+  display: block;
+  min-height: 36px;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.engagement-metric-card strong {
+  color: #0f172a;
+  font-size: 28px;
+}
+
+.engagement-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    2,
+    minmax(0, 1fr)
+  );
+  gap: 18px;
+}
+
+.engagement-progress-card {
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.engagement-progress-card > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 14px;
+}
+
+.engagement-progress-card h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.engagement-progress-card strong {
+  color: #0f172a;
+  font-size: 23px;
+}
+
+.engagement-progress-track {
+  width: 100%;
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef5;
+}
+
+.engagement-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.engagement-progress-fill.participation {
+  background: linear-gradient(
+    90deg,
+    #4f46e5,
+    #8b5cf6
+  );
+}
+
+.engagement-progress-fill.response {
+  background: linear-gradient(
+    90deg,
+    #0ea5e9,
+    #22c55e
+  );
+}
+
+.engagement-main-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    2,
+    minmax(0, 1fr)
+  );
+  gap: 22px;
+}
+
+.engagement-panel,
+.engagement-insight-panel {
+  min-width: 0;
+  padding: 25px;
+  border: 1px solid #e2e8f0;
+  border-radius: 23px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px
+    rgba(15, 23, 42, 0.06);
+}
+
+.engagement-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+
+.engagement-panel-heading span {
+  display: block;
+  margin-bottom: 7px;
+  color: #6366f1;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.engagement-panel-heading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.engagement-signal-badge {
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e !important;
+  font-size: 13px !important;
+  white-space: nowrap;
+}
+
+.engagement-chart-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 20px 0;
+  flex-wrap: wrap;
+}
+
+.engagement-donut {
+  display: flex;
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.engagement-donut-center {
+  display: flex;
+  width: 110px;
+  height: 110px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px
+    #eef2f7;
+}
+
+.engagement-donut-center strong {
+  color: #0f172a;
+  font-size: 32px;
+}
+
+.engagement-donut-center span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.engagement-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 190px;
+}
+
+.engagement-chart-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.signal-colour {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  border-radius: 50%;
+}
+
+.signal-colour.positive {
+  background: #22c55e;
+}
+
+.signal-colour.neutral {
+  background: #3b82f6;
+}
+
+.signal-colour.confused {
+  background: #f59e0b;
+}
+
+.engagement-chart-legend p {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 0;
+  color: #475569;
+}
+
+.engagement-chart-legend strong {
+  color: #0f172a;
+}
+
+.engagement-ethics-note {
+  padding: 14px 16px;
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.engagement-insight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.engagement-insight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.engagement-insight-item > span {
+  display: flex;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ede9fe;
+  color: #6d4aff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.engagement-insight-item p {
+  margin: 3px 0 0;
+  color: #334155;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.engagement-empty-list {
+  margin: 0;
+  padding: 17px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.engagement-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    3,
+    minmax(0, 1fr)
+  );
+  gap: 18px;
+}
+
+.engagement-insight-panel h2 {
+  margin: 0 0 7px;
+  color: #0f172a;
+  font-size: 21px;
+}
+
+.engagement-insight-panel > p {
+  min-height: 48px;
+  margin: 0 0 18px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.engagement-insight-panel.confusion {
+  border-top: 5px solid #f59e0b;
+}
+
+.engagement-insight-panel.positive {
+  border-top: 5px solid #22c55e;
+}
+
+.engagement-insight-panel.actions {
+  border-top: 5px solid #6366f1;
+}
+
+.engagement-metadata {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.engagement-metadata strong {
+  color: #334155;
+}
+
+@media (max-width: 1200px) {
+  .engagement-metrics-grid {
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  }
+
+  .engagement-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .engagement-insight-panel > p {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 950px) {
+  .engagement-session-banner,
+  .engagement-main-grid,
+  .engagement-progress-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .engagement-hero,
+  .engagement-analysis-toolbar,
+  .engagement-panel-heading,
+  .engagement-metadata {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .engagement-hero h1 {
+    font-size: 27px;
+  }
+
+  .engagement-score-box {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .engagement-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .engagement-chart-area {
+    gap: 22px;
+  }
+
+  .engagement-panel,
+  .engagement-insight-panel {
+    padding: 20px;
+  }
+
+  .engagement-analysis-toolbar button {
+    width: 100%;
+  }
+}

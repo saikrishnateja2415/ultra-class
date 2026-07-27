@@ -47,36 +47,283 @@ are used to generate the session summary.
 */
 
 function createSummaryContentFingerprint(questions) {
-  const fingerprintContent = questions
-    .map((question) => ({
-      id: question._id.toString(),
+    const fingerprintContent = questions
+        .map((question) => ({
+            id: question._id.toString(),
 
-      question:
-        question.question?.trim() || "",
+            question:
+                question.question?.trim() || "",
 
-      answer:
-        question.answer?.trim() || "",
+            answer:
+                question.answer?.trim() || "",
 
-      status:
-        question.status || "Pending",
+            status:
+                question.status || "Pending",
 
-      pinned:
-        Boolean(question.pinned),
+            pinned:
+                Boolean(question.pinned),
 
-      updatedAt:
-        question.updatedAt || null,
-    }))
-    .sort((firstQuestion, secondQuestion) =>
-      firstQuestion.id.localeCompare(
-        secondQuestion.id
-      )
+            updatedAt:
+                question.updatedAt || null,
+        }))
+        .sort((firstQuestion, secondQuestion) =>
+            firstQuestion.id.localeCompare(
+                secondQuestion.id
+            )
+        );
+
+    return crypto
+        .createHash("sha256")
+        .update(JSON.stringify(fingerprintContent))
+        .digest("hex");
+}
+
+/*
+  Create a fingerprint using the question content and
+  participation totals used by Feature 3.
+
+  This ensures the saved analysis is regenerated when
+  questions, answers or participation change.
+*/
+
+function createEngagementFingerprint({
+    questions,
+    registeredStudents,
+    joinedStudents,
+}) {
+    const fingerprintContent = {
+        questionFingerprint:
+            createSummaryContentFingerprint(questions),
+
+        registeredStudents,
+        joinedStudents,
+    };
+
+    return crypto
+        .createHash("sha256")
+        .update(JSON.stringify(fingerprintContent))
+        .digest("hex");
+}
+
+/*
+  Calculate objective platform metrics without AI.
+
+  Gemini is not responsible for these values.
+*/
+
+function calculateEngagementMetrics({
+    registeredStudents,
+    joinedStudents,
+    questions,
+}) {
+    const totalQuestions = questions.length;
+
+    const answeredQuestions = questions.filter(
+        (question) =>
+            question.status === "Answered" ||
+            Boolean(question.answer?.trim())
+    ).length;
+
+    const pendingQuestions =
+        totalQuestions - answeredQuestions;
+
+    const pinnedQuestions = questions.filter(
+        (question) => Boolean(question.pinned)
+    ).length;
+
+    const participationRate =
+        registeredStudents === 0
+            ? 0
+            : Math.round(
+                (joinedStudents / registeredStudents) *
+                100
+            );
+
+    const questionsPerParticipant =
+        joinedStudents === 0
+            ? 0
+            : Number(
+                (
+                    totalQuestions / joinedStudents
+                ).toFixed(2)
+            );
+
+    const lecturerResponseRate =
+        totalQuestions === 0
+            ? 0
+            : Math.round(
+                (answeredQuestions / totalQuestions) *
+                100
+            );
+
+    /*
+      Engagement score weighting:
+
+      45% - registered students who joined
+      30% - question activity
+      25% - lecturer response coverage
+
+      Two questions per joined participant represents
+      the maximum question-activity contribution.
+    */
+
+    const questionActivityScore = Math.min(
+        100,
+        questionsPerParticipant * 50
     );
 
-  return crypto
-    .createHash("sha256")
-    .update(JSON.stringify(fingerprintContent))
-    .digest("hex");
+    const engagementScore = Math.round(
+        participationRate * 0.45 +
+        questionActivityScore * 0.3 +
+        lecturerResponseRate * 0.25
+    );
+
+    let engagementLevel = "Low";
+
+    if (engagementScore >= 70) {
+        engagementLevel = "High";
+    } else if (engagementScore >= 40) {
+        engagementLevel = "Moderate";
+    }
+
+    return {
+        registeredStudents,
+        joinedStudents,
+        participationRate: Math.min(
+            100,
+            participationRate
+        ),
+        totalQuestions,
+        answeredQuestions,
+        pendingQuestions,
+        pinnedQuestions,
+        questionsPerParticipant,
+        lecturerResponseRate,
+        engagementScore,
+        engagementLevel,
+    };
 }
+
+/*
+  Clean AI-generated string lists before storing them.
+*/
+
+function cleanEngagementStringArray(items) {
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    return [
+        ...new Set(
+            items
+                .filter(
+                    (item) => typeof item === "string"
+                )
+                .map((item) => item.trim())
+                .filter(Boolean)
+        ),
+    ].slice(0, 8);
+}
+
+/*
+  Validate Gemini's question-level learning signals.
+
+  Any omitted or invalid classification safely falls
+  back to Neutral. Individual classifications are not
+  stored because this feature is aggregated.
+*/
+
+function calculateLearningSignalDistribution({
+    generatedSignals,
+    totalQuestions,
+}) {
+    const acceptedSignals = [
+        "Positive",
+        "Neutral",
+        "Confused",
+    ];
+
+    const signalByQuestionNumber = new Map();
+
+    if (Array.isArray(generatedSignals)) {
+        generatedSignals.forEach((item) => {
+            const questionNumber = Number(
+                item?.questionNumber
+            );
+
+            const signal = item?.signal;
+
+            if (
+                Number.isInteger(questionNumber) &&
+                questionNumber >= 1 &&
+                questionNumber <= totalQuestions &&
+                acceptedSignals.includes(signal) &&
+                !signalByQuestionNumber.has(
+                    questionNumber
+                )
+            ) {
+                signalByQuestionNumber.set(
+                    questionNumber,
+                    signal
+                );
+            }
+        });
+    }
+
+    const distribution = {
+        positive: 0,
+        neutral: 0,
+        confused: 0,
+    };
+
+    for (
+        let questionNumber = 1;
+        questionNumber <= totalQuestions;
+        questionNumber += 1
+    ) {
+        const signal =
+            signalByQuestionNumber.get(
+                questionNumber
+            ) || "Neutral";
+
+        if (signal === "Positive") {
+            distribution.positive += 1;
+        } else if (signal === "Confused") {
+            distribution.confused += 1;
+        } else {
+            distribution.neutral += 1;
+        }
+    }
+
+    let overallLearningSignal = "Neutral";
+
+    if (totalQuestions > 0) {
+        const confusedRate =
+            distribution.confused / totalQuestions;
+
+        const positiveRate =
+            distribution.positive / totalQuestions;
+
+        const neutralRate =
+            distribution.neutral / totalQuestions;
+
+        if (confusedRate >= 0.5) {
+            overallLearningSignal = "Confused";
+        } else if (positiveRate >= 0.5) {
+            overallLearningSignal = "Positive";
+        } else if (neutralRate >= 0.6) {
+            overallLearningSignal = "Neutral";
+        } else {
+            overallLearningSignal = "Mixed";
+        }
+    }
+
+    return {
+        distribution,
+        overallLearningSignal,
+    };
+}
+
 
 async function findLecturerSession({
     sessionId,
@@ -638,178 +885,177 @@ router.get(
 
 
 router.post(
-  "/ai/sessions/:sessionId/summary",
-  async (req, res) => {
-    let session = null;
+    "/ai/sessions/:sessionId/summary",
+    async (req, res) => {
+        let session = null;
 
-    try {
-      const { sessionId } = req.params;
+        try {
+            const { sessionId } = req.params;
 
-      const {
-        lecturerId,
-        forceRegenerate = false,
-      } = req.body;
+            const {
+                lecturerId,
+                forceRegenerate = false,
+            } = req.body;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Lecturer account is required",
-        });
-      }
+            if (!lecturerId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Lecturer account is required",
+                });
+            }
 
-      /*
-        Verify that the selected session belongs to
-        the lecturer requesting the summary.
-      */
+            /*
+              Verify that the selected session belongs to
+              the lecturer requesting the summary.
+            */
 
-      session = await findLecturerSession({
-        sessionId,
-        lecturerId,
-      });
+            session = await findLecturerSession({
+                sessionId,
+                lecturerId,
+            });
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Session not found or you are not authorised to summarise it",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to summarise it",
+                });
+            }
 
-      /*
-        Load anonymous classroom content.
+            /*
+              Load anonymous classroom content.
 
-        Student names, emails and user IDs are not
-        selected or sent to Gemini.
-      */
+              Student names, emails and user IDs are not
+              selected or sent to Gemini.
+            */
 
-      const questions = await Question.find({
-        sessionId: session._id,
-      })
-        .select(
-          "_id question answer status pinned createdAt updatedAt"
-        )
-        .sort({
-          createdAt: 1,
-        })
-        .lean();
+            const questions = await Question.find({
+                sessionId: session._id,
+            })
+                .select(
+                    "_id question answer status pinned createdAt updatedAt"
+                )
+                .sort({
+                    createdAt: 1,
+                })
+                .lean();
 
-      if (questions.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "At least one question is required to generate a session summary",
-        });
-      }
+            if (questions.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "At least one question is required to generate a session summary",
+                });
+            }
 
-      const contentFingerprint =
-        createSummaryContentFingerprint(
-          questions
-        );
+            const contentFingerprint =
+                createSummaryContentFingerprint(
+                    questions
+                );
 
-      const existingAnalysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
-        });
+            const existingAnalysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
 
-      /*
-        Reuse the saved summary when questions and
-        answers have not changed.
-      */
+            /*
+              Reuse the saved summary when questions and
+              answers have not changed.
+            */
 
-      if (
-        !forceRegenerate &&
-        existingAnalysis?.sessionSummary
-          ?.status === "completed" &&
-        existingAnalysis?.sessionSummary
-          ?.contentFingerprint ===
-          contentFingerprint
-      ) {
-        return res.status(200).json({
-          success: true,
+            if (
+                !forceRegenerate &&
+                existingAnalysis?.sessionSummary
+                    ?.status === "completed" &&
+                existingAnalysis?.sessionSummary
+                    ?.contentFingerprint ===
+                contentFingerprint
+            ) {
+                return res.status(200).json({
+                    success: true,
 
-          message:
-            "Saved session summary loaded",
+                    message:
+                        "Saved session summary loaded",
 
-          cached: true,
+                    cached: true,
 
-          sessionSummary:
-            existingAnalysis.sessionSummary,
+                    sessionSummary:
+                        existingAnalysis.sessionSummary,
 
-          metadata:
-            existingAnalysis.metadata,
-        });
-      }
+                    metadata:
+                        existingAnalysis.metadata,
+                });
+            }
 
-      /*
-        Mark the summary as generating.
+            /*
+              Mark the summary as generating.
 
-        Any regenerated summary becomes unpublished
-        until the lecturer reviews it again.
-      */
+              Any regenerated summary becomes unpublished
+              until the lecturer reviews it again.
+            */
 
-      await SessionAIAnalysis.findOneAndUpdate(
-        {
-          sessionId: session._id,
-        },
-        {
-          $set: {
-            sessionCode: session.sessionCode,
-            lecturerId: session.lecturerId,
+            await SessionAIAnalysis.findOneAndUpdate(
+                {
+                    sessionId: session._id,
+                },
+                {
+                    $set: {
+                        sessionCode: session.sessionCode,
+                        lecturerId: session.lecturerId,
 
-            "sessionSummary.status":
-              "generating",
+                        "sessionSummary.status":
+                            "generating",
 
-            "sessionSummary.errorMessage":
-              "",
+                        "sessionSummary.errorMessage":
+                            "",
 
-            "sessionSummary.isPublished":
-              false,
+                        "sessionSummary.isPublished":
+                            false,
 
-            "sessionSummary.publishedAt":
-              null,
-          },
-        },
-        {
-          upsert: true,
-          returnDocument: "after",
-          setDefaultsOnInsert: true,
-        }
-      );
+                        "sessionSummary.publishedAt":
+                            null,
+                    },
+                },
+                {
+                    upsert: true,
+                    returnDocument: "after",
+                    setDefaultsOnInsert: true,
+                }
+            );
 
-      /*
-        Include saved cluster topics when Feature 1
-        has already been generated.
-      */
+            /*
+              Include saved cluster topics when Feature 1
+              has already been generated.
+            */
 
-      const savedClusters =
-        existingAnalysis?.questionClustering
-          ?.status === "completed"
-          ? existingAnalysis.questionClustering
-              .clusters
-          : [];
+            const savedClusters =
+                existingAnalysis?.questionClustering
+                    ?.status === "completed"
+                    ? existingAnalysis.questionClustering
+                        .clusters
+                    : [];
 
-      const clusterContext =
-        savedClusters.length === 0
-          ? "No saved question clusters are available."
-          : savedClusters
-              .map(
-                (cluster, index) =>
-                  `${index + 1}. ${
-                    cluster.clusterName
-                  }: ${cluster.description}`
-              )
-              .join("\n");
+            const clusterContext =
+                savedClusters.length === 0
+                    ? "No saved question clusters are available."
+                    : savedClusters
+                        .map(
+                            (cluster, index) =>
+                                `${index + 1}. ${cluster.clusterName
+                                }: ${cluster.description}`
+                        )
+                        .join("\n");
 
-      const questionAndAnswerContext =
-        questions
-          .map((question, index) => {
-            const lecturerAnswer =
-              question.answer?.trim()
-                ? question.answer.trim()
-                : "No lecturer answer was provided.";
+            const questionAndAnswerContext =
+                questions
+                    .map((question, index) => {
+                        const lecturerAnswer =
+                            question.answer?.trim()
+                                ? question.answer.trim()
+                                : "No lecturer answer was provided.";
 
-            return `
+                        return `
 Question ${index + 1}:
 ${question.question}
 
@@ -822,10 +1068,10 @@ ${question.status || "Pending"}
 Pinned:
 ${question.pinned ? "Yes" : "No"}
             `.trim();
-          })
-          .join("\n\n");
+                    })
+                    .join("\n\n");
 
-      const prompt = `
+            const prompt = `
 You are creating a factual teaching-session summary for a university lecturer.
 
 Session title: ${session.title}
@@ -853,465 +1099,465 @@ Instructions:
 10. Return only the structured JSON required by the schema.
       `.trim();
 
-      const responseJsonSchema = {
-        type: "object",
+            const responseJsonSchema = {
+                type: "object",
 
-        properties: {
-          summary: {
-            type: "string",
-          },
+                properties: {
+                    summary: {
+                        type: "string",
+                    },
 
-          keyTopics: {
-            type: "array",
-            items: {
-              type: "string",
-            },
-          },
+                    keyTopics: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
 
-          commonDifficulties: {
-            type: "array",
-            items: {
-              type: "string",
-            },
-          },
+                    commonDifficulties: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
 
-          importantExplanations: {
-            type: "array",
-            items: {
-              type: "string",
-            },
-          },
+                    importantExplanations: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
 
-          revisionPoints: {
-            type: "array",
-            items: {
-              type: "string",
-            },
-          },
-        },
+                    revisionPoints: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+                },
 
-        required: [
-          "summary",
-          "keyTopics",
-          "commonDifficulties",
-          "importantExplanations",
-          "revisionPoints",
-        ],
-      };
+                required: [
+                    "summary",
+                    "keyTopics",
+                    "commonDifficulties",
+                    "importantExplanations",
+                    "revisionPoints",
+                ],
+            };
 
-      const generatedResult =
-        await generateStructuredContent({
-          prompt,
-          responseJsonSchema,
-        });
+            const generatedResult =
+                await generateStructuredContent({
+                    prompt,
+                    responseJsonSchema,
+                });
 
-      if (!generatedResult.summary?.trim()) {
-        throw new Error(
-          "Gemini returned an empty session summary"
-        );
-      }
-
-      /*
-        Remove empty and duplicated list items before
-        saving the result.
-      */
-
-      const cleanStringArray = (items) => {
-        if (!Array.isArray(items)) {
-          return [];
-        }
-
-        return [
-          ...new Set(
-            items
-              .filter(
-                (item) =>
-                  typeof item === "string"
-              )
-              .map((item) => item.trim())
-              .filter(Boolean)
-          ),
-        ];
-      };
-
-      const generatedAt = new Date();
-
-      const savedAnalysis =
-        await SessionAIAnalysis.findOneAndUpdate(
-          {
-            sessionId: session._id,
-          },
-          {
-            $set: {
-              sessionCode: session.sessionCode,
-              lecturerId: session.lecturerId,
-
-              "sessionSummary.status":
-                "completed",
-
-              "sessionSummary.summary":
-                generatedResult.summary.trim(),
-
-              "sessionSummary.keyTopics":
-                cleanStringArray(
-                  generatedResult.keyTopics
-                ),
-
-              "sessionSummary.commonDifficulties":
-                cleanStringArray(
-                  generatedResult.commonDifficulties
-                ),
-
-              "sessionSummary.importantExplanations":
-                cleanStringArray(
-                  generatedResult.importantExplanations
-                ),
-
-              "sessionSummary.revisionPoints":
-                cleanStringArray(
-                  generatedResult.revisionPoints
-                ),
-
-              "sessionSummary.contentFingerprint":
-                contentFingerprint,
-
-              "sessionSummary.generatedAt":
-                generatedAt,
-
-              "sessionSummary.errorMessage":
-                "",
-
-              "sessionSummary.isPublished":
-                false,
-
-              "sessionSummary.publishedAt":
-                null,
-
-              "metadata.provider":
-                "Google Gemini",
-
-              "metadata.model":
-                getGeminiModel(),
-
-              "metadata.lastGeneratedAt":
-                generatedAt,
-            },
-          },
-          {
-            returnDocument: "after",
-            upsert: true,
-            setDefaultsOnInsert: true,
-          }
-        );
-
-      return res.status(200).json({
-        success: true,
-
-        message:
-          "AI session summary generated successfully",
-
-        cached: false,
-
-        sessionSummary:
-          savedAnalysis.sessionSummary,
-
-        metadata: savedAnalysis.metadata,
-      });
-    } catch (error) {
-      console.error(
-        "Generate AI session summary error:",
-        error
-      );
-
-      /*
-        Record failure without affecting existing
-        question clusters.
-      */
-
-      if (session?._id) {
-        try {
-          await SessionAIAnalysis.findOneAndUpdate(
-            {
-              sessionId: session._id,
-            },
-            {
-              $set: {
-                "sessionSummary.status":
-                  "failed",
-
-                "sessionSummary.errorMessage":
-                  error.message,
-              },
+            if (!generatedResult.summary?.trim()) {
+                throw new Error(
+                    "Gemini returned an empty session summary"
+                );
             }
-          );
-        } catch (saveError) {
-          console.error(
-            "Save session summary failure error:",
-            saveError
-          );
+
+            /*
+              Remove empty and duplicated list items before
+              saving the result.
+            */
+
+            const cleanStringArray = (items) => {
+                if (!Array.isArray(items)) {
+                    return [];
+                }
+
+                return [
+                    ...new Set(
+                        items
+                            .filter(
+                                (item) =>
+                                    typeof item === "string"
+                            )
+                            .map((item) => item.trim())
+                            .filter(Boolean)
+                    ),
+                ];
+            };
+
+            const generatedAt = new Date();
+
+            const savedAnalysis =
+                await SessionAIAnalysis.findOneAndUpdate(
+                    {
+                        sessionId: session._id,
+                    },
+                    {
+                        $set: {
+                            sessionCode: session.sessionCode,
+                            lecturerId: session.lecturerId,
+
+                            "sessionSummary.status":
+                                "completed",
+
+                            "sessionSummary.summary":
+                                generatedResult.summary.trim(),
+
+                            "sessionSummary.keyTopics":
+                                cleanStringArray(
+                                    generatedResult.keyTopics
+                                ),
+
+                            "sessionSummary.commonDifficulties":
+                                cleanStringArray(
+                                    generatedResult.commonDifficulties
+                                ),
+
+                            "sessionSummary.importantExplanations":
+                                cleanStringArray(
+                                    generatedResult.importantExplanations
+                                ),
+
+                            "sessionSummary.revisionPoints":
+                                cleanStringArray(
+                                    generatedResult.revisionPoints
+                                ),
+
+                            "sessionSummary.contentFingerprint":
+                                contentFingerprint,
+
+                            "sessionSummary.generatedAt":
+                                generatedAt,
+
+                            "sessionSummary.errorMessage":
+                                "",
+
+                            "sessionSummary.isPublished":
+                                false,
+
+                            "sessionSummary.publishedAt":
+                                null,
+
+                            "metadata.provider":
+                                "Google Gemini",
+
+                            "metadata.model":
+                                getGeminiModel(),
+
+                            "metadata.lastGeneratedAt":
+                                generatedAt,
+                        },
+                    },
+                    {
+                        returnDocument: "after",
+                        upsert: true,
+                        setDefaultsOnInsert: true,
+                    }
+                );
+
+            return res.status(200).json({
+                success: true,
+
+                message:
+                    "AI session summary generated successfully",
+
+                cached: false,
+
+                sessionSummary:
+                    savedAnalysis.sessionSummary,
+
+                metadata: savedAnalysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Generate AI session summary error:",
+                error
+            );
+
+            /*
+              Record failure without affecting existing
+              question clusters.
+            */
+
+            if (session?._id) {
+                try {
+                    await SessionAIAnalysis.findOneAndUpdate(
+                        {
+                            sessionId: session._id,
+                        },
+                        {
+                            $set: {
+                                "sessionSummary.status":
+                                    "failed",
+
+                                "sessionSummary.errorMessage":
+                                    error.message,
+                            },
+                        }
+                    );
+                } catch (saveError) {
+                    console.error(
+                        "Save session summary failure error:",
+                        saveError
+                    );
+                }
+            }
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+
+                message:
+                    "Unable to generate AI session summary",
+
+                error:
+                    process.env.NODE_ENV === "production"
+                        ? undefined
+                        : error.message,
+            });
         }
-      }
-
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid session or lecturer information",
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-
-        message:
-          "Unable to generate AI session summary",
-
-        error:
-          process.env.NODE_ENV === "production"
-            ? undefined
-            : error.message,
-      });
     }
-  }
 );
 
 router.get(
-  "/ai/sessions/:sessionId/summary",
-  async (req, res) => {
-    try {
-      const { sessionId } = req.params;
-      const { lecturerId } = req.query;
+    "/ai/sessions/:sessionId/summary",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const { lecturerId } = req.query;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Lecturer account is required",
-        });
-      }
+            if (!lecturerId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Lecturer account is required",
+                });
+            }
 
-      /*
-        Confirm that the session belongs to the
-        lecturer requesting its summary.
-      */
+            /*
+              Confirm that the session belongs to the
+              lecturer requesting its summary.
+            */
 
-      const session =
-        await findLecturerSession({
-          sessionId,
-          lecturerId,
-        });
+            const session =
+                await findLecturerSession({
+                    sessionId,
+                    lecturerId,
+                });
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Session not found or you are not authorised to view its summary",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to view its summary",
+                });
+            }
 
-      const analysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
-        });
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
 
-      if (
-        !analysis ||
-        analysis.sessionSummary.status ===
-          "not_generated"
-      ) {
-        return res.status(200).json({
-          success: true,
-          generated: false,
-          sessionSummary: null,
-          metadata: null,
-        });
-      }
+            if (
+                !analysis ||
+                analysis.sessionSummary.status ===
+                "not_generated"
+            ) {
+                return res.status(200).json({
+                    success: true,
+                    generated: false,
+                    sessionSummary: null,
+                    metadata: null,
+                });
+            }
 
-      return res.status(200).json({
-        success: true,
+            return res.status(200).json({
+                success: true,
 
-        generated:
-          analysis.sessionSummary.status ===
-          "completed",
+                generated:
+                    analysis.sessionSummary.status ===
+                    "completed",
 
-        sessionSummary:
-          analysis.sessionSummary,
+                sessionSummary:
+                    analysis.sessionSummary,
 
-        metadata: analysis.metadata,
-      });
-    } catch (error) {
-      console.error(
-        "Get AI session summary error:",
-        error
-      );
+                metadata: analysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Get AI session summary error:",
+                error
+            );
 
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid session information",
-        });
-      }
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session information",
+                });
+            }
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load AI session summary",
-      });
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to load AI session summary",
+            });
+        }
     }
-  }
 );
 
 router.put(
-  "/ai/sessions/:sessionId/summary",
-  async (req, res) => {
-    try {
-      const { sessionId } = req.params;
+    "/ai/sessions/:sessionId/summary",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
 
-      const {
-        lecturerId,
-        summary,
-        keyTopics,
-        commonDifficulties,
-        importantExplanations,
-        revisionPoints,
-      } = req.body;
+            const {
+                lecturerId,
+                summary,
+                keyTopics,
+                commonDifficulties,
+                importantExplanations,
+                revisionPoints,
+            } = req.body;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Lecturer account is required",
-        });
-      }
+            if (!lecturerId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Lecturer account is required",
+                });
+            }
 
-      if (!summary?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "The session overview cannot be empty",
-        });
-      }
+            if (!summary?.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "The session overview cannot be empty",
+                });
+            }
 
-      const session =
-        await findLecturerSession({
-          sessionId,
-          lecturerId,
-        });
+            const session =
+                await findLecturerSession({
+                    sessionId,
+                    lecturerId,
+                });
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Session not found or you are not authorised to edit its summary",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to edit its summary",
+                });
+            }
 
-      const existingAnalysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
-        });
+            const existingAnalysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
 
-      if (
-        !existingAnalysis ||
-        existingAnalysis.sessionSummary.status !==
-          "completed"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Generate a session summary before editing it",
-        });
-      }
+            if (
+                !existingAnalysis ||
+                existingAnalysis.sessionSummary.status !==
+                "completed"
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Generate a session summary before editing it",
+                });
+            }
 
-      /*
-        Validate and clean each lecturer-edited list.
-      */
+            /*
+              Validate and clean each lecturer-edited list.
+            */
 
-      const cleanStringArray = (items) => {
-        if (!Array.isArray(items)) {
-          return [];
+            const cleanStringArray = (items) => {
+                if (!Array.isArray(items)) {
+                    return [];
+                }
+
+                return [
+                    ...new Set(
+                        items
+                            .filter(
+                                (item) =>
+                                    typeof item === "string"
+                            )
+                            .map((item) => item.trim())
+                            .filter(Boolean)
+                    ),
+                ];
+            };
+
+            existingAnalysis.sessionSummary.summary =
+                summary.trim();
+
+            existingAnalysis.sessionSummary.keyTopics =
+                cleanStringArray(keyTopics);
+
+            existingAnalysis.sessionSummary
+                .commonDifficulties =
+                cleanStringArray(commonDifficulties);
+
+            existingAnalysis.sessionSummary
+                .importantExplanations =
+                cleanStringArray(importantExplanations);
+
+            existingAnalysis.sessionSummary
+                .revisionPoints =
+                cleanStringArray(revisionPoints);
+
+            /*
+              Editing creates a new private draft.
+
+              If a previously published summary is edited,
+              it must be reviewed and published again.
+            */
+
+            existingAnalysis.sessionSummary.isPublished =
+                false;
+
+            existingAnalysis.sessionSummary.publishedAt =
+                null;
+
+            await existingAnalysis.save();
+
+            return res.status(200).json({
+                success: true,
+
+                message:
+                    "Session summary draft saved successfully",
+
+                sessionSummary:
+                    existingAnalysis.sessionSummary,
+
+                metadata:
+                    existingAnalysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Save edited session summary error:",
+                error
+            );
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to save the session summary draft",
+            });
         }
-
-        return [
-          ...new Set(
-            items
-              .filter(
-                (item) =>
-                  typeof item === "string"
-              )
-              .map((item) => item.trim())
-              .filter(Boolean)
-          ),
-        ];
-      };
-
-      existingAnalysis.sessionSummary.summary =
-        summary.trim();
-
-      existingAnalysis.sessionSummary.keyTopics =
-        cleanStringArray(keyTopics);
-
-      existingAnalysis.sessionSummary
-        .commonDifficulties =
-        cleanStringArray(commonDifficulties);
-
-      existingAnalysis.sessionSummary
-        .importantExplanations =
-        cleanStringArray(importantExplanations);
-
-      existingAnalysis.sessionSummary
-        .revisionPoints =
-        cleanStringArray(revisionPoints);
-
-      /*
-        Editing creates a new private draft.
-
-        If a previously published summary is edited,
-        it must be reviewed and published again.
-      */
-
-      existingAnalysis.sessionSummary.isPublished =
-        false;
-
-      existingAnalysis.sessionSummary.publishedAt =
-        null;
-
-      await existingAnalysis.save();
-
-      return res.status(200).json({
-        success: true,
-
-        message:
-          "Session summary draft saved successfully",
-
-        sessionSummary:
-          existingAnalysis.sessionSummary,
-
-        metadata:
-          existingAnalysis.metadata,
-      });
-    } catch (error) {
-      console.error(
-        "Save edited session summary error:",
-        error
-      );
-
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid session or lecturer information",
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to save the session summary draft",
-      });
     }
-  }
 );
 
 
@@ -1322,392 +1568,996 @@ LECTURER PUBLISHES SESSION SUMMARY
 */
 
 router.put(
-  "/ai/sessions/:sessionId/summary/publish",
-  async (req, res) => {
-    try {
-      const { sessionId } = req.params;
-      const { lecturerId } = req.body;
+    "/ai/sessions/:sessionId/summary/publish",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const { lecturerId } = req.body;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Lecturer account is required",
-        });
-      }
+            if (!lecturerId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Lecturer account is required",
+                });
+            }
 
-      const session =
-        await findLecturerSession({
-          sessionId,
-          lecturerId,
-        });
+            const session =
+                await findLecturerSession({
+                    sessionId,
+                    lecturerId,
+                });
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Session not found or you are not authorised to publish its summary",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to publish its summary",
+                });
+            }
 
-      /*
-        Students should receive the final learning
-        material only after classroom activity ends.
-      */
+            /*
+              Students should receive the final learning
+              material only after classroom activity ends.
+            */
 
-      if (session.status !== "ended") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "End the session before publishing its summary",
-        });
-      }
+            if (session.status !== "ended") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "End the session before publishing its summary",
+                });
+            }
 
-      const analysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
-        });
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
 
-      if (
-        !analysis ||
-        analysis.sessionSummary.status !==
-          "completed" ||
-        !analysis.sessionSummary.summary?.trim()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Generate and review the summary before publishing it",
-        });
-      }
+            if (
+                !analysis ||
+                analysis.sessionSummary.status !==
+                "completed" ||
+                !analysis.sessionSummary.summary?.trim()
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Generate and review the summary before publishing it",
+                });
+            }
 
-      if (
-        analysis.sessionSummary.isPublished
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            "Session summary is already published",
-          sessionSummary:
-            analysis.sessionSummary,
-        });
-      }
+            if (
+                analysis.sessionSummary.isPublished
+            ) {
+                return res.status(200).json({
+                    success: true,
+                    message:
+                        "Session summary is already published",
+                    sessionSummary:
+                        analysis.sessionSummary,
+                });
+            }
 
-      analysis.sessionSummary.isPublished = true;
-      analysis.sessionSummary.publishedAt =
-        new Date();
+            analysis.sessionSummary.isPublished = true;
+            analysis.sessionSummary.publishedAt =
+                new Date();
 
-      await analysis.save();
+            await analysis.save();
 
-      return res.status(200).json({
-        success: true,
+            return res.status(200).json({
+                success: true,
 
-        message:
-          "Session summary published successfully",
+                message:
+                    "Session summary published successfully",
 
-        sessionSummary:
-          analysis.sessionSummary,
+                sessionSummary:
+                    analysis.sessionSummary,
 
-        metadata: analysis.metadata,
-      });
-    } catch (error) {
-      console.error(
-        "Publish session summary error:",
-        error
-      );
+                metadata: analysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Publish session summary error:",
+                error
+            );
 
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid session or lecturer information",
-        });
-      }
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to publish the session summary",
-      });
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to publish the session summary",
+            });
+        }
     }
-  }
 );
 
 router.put(
-  "/ai/sessions/:sessionId/summary/unpublish",
-  async (req, res) => {
-    try {
-      const { sessionId } = req.params;
-      const { lecturerId } = req.body;
+    "/ai/sessions/:sessionId/summary/unpublish",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const { lecturerId } = req.body;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Lecturer account is required",
-        });
-      }
+            if (!lecturerId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Lecturer account is required",
+                });
+            }
 
-      const session =
-        await findLecturerSession({
-          sessionId,
-          lecturerId,
-        });
+            const session =
+                await findLecturerSession({
+                    sessionId,
+                    lecturerId,
+                });
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Session not found or you are not authorised to unpublish its summary",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to unpublish its summary",
+                });
+            }
 
-      const analysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
-        });
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
 
-      if (
-        !analysis ||
-        analysis.sessionSummary.status !==
-          "completed"
-      ) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "A generated session summary was not found",
-        });
-      }
+            if (
+                !analysis ||
+                analysis.sessionSummary.status !==
+                "completed"
+            ) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "A generated session summary was not found",
+                });
+            }
 
-      if (
-        !analysis.sessionSummary.isPublished
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            "Session summary is already private",
-          sessionSummary:
-            analysis.sessionSummary,
-        });
-      }
+            if (
+                !analysis.sessionSummary.isPublished
+            ) {
+                return res.status(200).json({
+                    success: true,
+                    message:
+                        "Session summary is already private",
+                    sessionSummary:
+                        analysis.sessionSummary,
+                });
+            }
 
-      analysis.sessionSummary.isPublished = false;
-      analysis.sessionSummary.publishedAt = null;
+            analysis.sessionSummary.isPublished = false;
+            analysis.sessionSummary.publishedAt = null;
 
-      await analysis.save();
+            await analysis.save();
 
-      return res.status(200).json({
-        success: true,
+            return res.status(200).json({
+                success: true,
 
-        message:
-          "Session summary unpublished successfully",
+                message:
+                    "Session summary unpublished successfully",
 
-        sessionSummary:
-          analysis.sessionSummary,
+                sessionSummary:
+                    analysis.sessionSummary,
 
-        metadata: analysis.metadata,
-      });
-    } catch (error) {
-      console.error(
-        "Unpublish session summary error:",
-        error
-      );
+                metadata: analysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Unpublish session summary error:",
+                error
+            );
 
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid session or lecturer information",
-        });
-      }
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to unpublish the session summary",
-      });
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to unpublish the session summary",
+            });
+        }
     }
-  }
 );
 
 
 router.get(
-  "/ai/student/sessions/:sessionId/published-summary",
-  async (req, res) => {
-    try {
-      const { sessionId } = req.params;
+    "/ai/student/sessions/:sessionId/published-summary",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
 
-      /*
-        studentId is the logged-in User account ID,
-        matching the existing student dashboard.
-      */
+            /*
+              studentId is the logged-in User account ID,
+              matching the existing student dashboard.
+            */
 
-      const { studentId } = req.query;
+            const { studentId } = req.query;
 
-      if (!studentId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Student account is required",
-        });
-      }
+            if (!studentId) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Student account is required",
+                });
+            }
 
-      const session = await Session.findById(
-        sessionId
-      ).select(
-        "title moduleCode subjectId subjectName sessionCode lecturerName status endedAt participants"
-      );
+            const session = await Session.findById(
+                sessionId
+            ).select(
+                "title moduleCode subjectId subjectName sessionCode lecturerName status endedAt participants"
+            );
 
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message: "Session not found",
-        });
-      }
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Session not found",
+                });
+            }
 
-      /*
-        Published summaries are available only after
-        the classroom session has ended.
-      */
+            /*
+              Published summaries are available only after
+              the classroom session has ended.
+            */
 
-      if (session.status !== "ended") {
-        return res.status(403).json({
-          success: false,
-          message:
-            "The summary will be available after the session ends",
-        });
-      }
+            if (session.status !== "ended") {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        "The summary will be available after the session ends",
+                });
+            }
 
-      /*
-        Confirm that the User account belongs to an
-        active Student registered for this subject.
-      */
+            /*
+              Confirm that the User account belongs to an
+              active Student registered for this subject.
+            */
 
-      const student = await Student.findOne({
-        userId: studentId,
-        status: "active",
-        subjects: session.subjectId,
-      }).select("_id userId subjects status");
+            const student = await Student.findOne({
+                userId: studentId,
+                status: "active",
+                subjects: session.subjectId,
+            }).select("_id userId subjects status");
 
-      if (!student) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You are not registered for this session's subject",
-        });
-      }
+            if (!student) {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        "You are not registered for this session's subject",
+                });
+            }
 
-      /*
-        Confirm that the student joined this specific
-        classroom session.
-      */
+            /*
+              Confirm that the student joined this specific
+              classroom session.
+            */
 
-      const joinedSession = (
-        session.participants || []
-      ).some(
-        (participant) =>
-          participant.studentId.toString() ===
-          student._id.toString()
-      );
+            const joinedSession = (
+                session.participants || []
+            ).some(
+                (participant) =>
+                    participant.studentId.toString() ===
+                    student._id.toString()
+            );
 
-      if (!joinedSession) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "This summary is available only to students who joined the session",
-        });
-      }
+            if (!joinedSession) {
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        "This summary is available only to students who joined the session",
+                });
+            }
 
-      const analysis =
-        await SessionAIAnalysis.findOne({
-          sessionId: session._id,
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
 
-          "sessionSummary.status":
-            "completed",
+                    "sessionSummary.status":
+                        "completed",
 
-          "sessionSummary.isPublished":
-            true,
-        }).select(
-          "sessionSummary.summary sessionSummary.keyTopics sessionSummary.commonDifficulties sessionSummary.importantExplanations sessionSummary.revisionPoints sessionSummary.generatedAt sessionSummary.publishedAt"
-        );
+                    "sessionSummary.isPublished":
+                        true,
+                }).select(
+                    "sessionSummary.summary sessionSummary.keyTopics sessionSummary.commonDifficulties sessionSummary.importantExplanations sessionSummary.revisionPoints sessionSummary.generatedAt sessionSummary.publishedAt"
+                );
 
-      if (!analysis) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "The lecturer has not published a summary for this session",
-        });
-      }
+            if (!analysis) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "The lecturer has not published a summary for this session",
+                });
+            }
 
-      /*
-        Return only approved student-facing content.
+            /*
+              Return only approved student-facing content.
 
-        Internal AI metadata, fingerprints, errors,
-        sentiment and teaching recommendations are
-        intentionally excluded.
-      */
+              Internal AI metadata, fingerprints, errors,
+              sentiment and teaching recommendations are
+              intentionally excluded.
+            */
 
-      return res.status(200).json({
-        success: true,
+            return res.status(200).json({
+                success: true,
 
-        session: {
-          _id: session._id,
-          title: session.title,
-          moduleCode: session.moduleCode,
-          subjectName: session.subjectName,
-          sessionCode: session.sessionCode,
-          lecturerName: session.lecturerName,
-          status: session.status,
-          endedAt: session.endedAt,
-        },
+                session: {
+                    _id: session._id,
+                    title: session.title,
+                    moduleCode: session.moduleCode,
+                    subjectName: session.subjectName,
+                    sessionCode: session.sessionCode,
+                    lecturerName: session.lecturerName,
+                    status: session.status,
+                    endedAt: session.endedAt,
+                },
 
-        sessionSummary: {
-          summary:
-            analysis.sessionSummary.summary,
+                sessionSummary: {
+                    summary:
+                        analysis.sessionSummary.summary,
 
-          keyTopics:
-            analysis.sessionSummary.keyTopics,
+                    keyTopics:
+                        analysis.sessionSummary.keyTopics,
 
-          commonDifficulties:
-            analysis.sessionSummary
-              .commonDifficulties,
+                    commonDifficulties:
+                        analysis.sessionSummary
+                            .commonDifficulties,
 
-          importantExplanations:
-            analysis.sessionSummary
-              .importantExplanations,
+                    importantExplanations:
+                        analysis.sessionSummary
+                            .importantExplanations,
 
-          revisionPoints:
-            analysis.sessionSummary
-              .revisionPoints,
+                    revisionPoints:
+                        analysis.sessionSummary
+                            .revisionPoints,
 
-          generatedAt:
-            analysis.sessionSummary.generatedAt,
+                    generatedAt:
+                        analysis.sessionSummary.generatedAt,
 
-          publishedAt:
-            analysis.sessionSummary.publishedAt,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "Get student published summary error:",
-        error
-      );
+                    publishedAt:
+                        analysis.sessionSummary.publishedAt,
+                },
+            });
+        } catch (error) {
+            console.error(
+                "Get student published summary error:",
+                error
+            );
 
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid student or session information",
-        });
-      }
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid student or session information",
+                });
+            }
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load the published session summary",
-      });
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to load the published session summary",
+            });
+        }
     }
-  }
+);
+
+
+/*
+  AI FEATURE 3
+  Generate session engagement and aggregated
+  learning-signal analysis.
+*/
+
+router.post(
+    "/ai/sessions/:sessionId/engagement-sentiment",
+    async (req, res) => {
+        let session = null;
+
+        try {
+            const { sessionId } = req.params;
+
+            const {
+                lecturerId,
+                forceRegenerate = false,
+            } = req.body;
+
+            session = await findLecturerSession({
+                sessionId,
+                lecturerId,
+            });
+
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to analyse it",
+                });
+            }
+
+            const questions = await Question.find({
+                sessionId: session._id,
+            })
+                .select(
+                    "question answer status pinned studentId createdAt updatedAt"
+                )
+                .sort({ createdAt: 1 });
+
+            /*
+              Count active students registered for the
+              session's subject.
+            */
+
+            const registeredStudents =
+                await Student.countDocuments({
+                    subjects: session.subjectId,
+                    status: "active",
+                });
+
+            /*
+              Session participants store Student profile IDs.
+              A Set protects the metric from duplicate joins.
+            */
+
+            const joinedStudentIds = new Set(
+                (session.participants || [])
+                    .map((participant) =>
+                        participant.studentId?.toString()
+                    )
+                    .filter(Boolean)
+            );
+
+            const joinedStudents =
+                joinedStudentIds.size;
+
+            const metrics =
+                calculateEngagementMetrics({
+                    registeredStudents,
+                    joinedStudents,
+                    questions,
+                });
+
+            const contentFingerprint =
+                createEngagementFingerprint({
+                    questions,
+                    registeredStudents,
+                    joinedStudents,
+                });
+
+            const existingAnalysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
+
+            /*
+              Return the saved analysis when its source data
+              has not changed unless regeneration was requested.
+            */
+
+            if (
+                !forceRegenerate &&
+                existingAnalysis?.engagementAndSentiment
+                    ?.status === "completed" &&
+                existingAnalysis.engagementAndSentiment
+                    .contentFingerprint ===
+                contentFingerprint
+            ) {
+                return res.status(200).json({
+                    success: true,
+                    message:
+                        "Saved engagement analysis loaded",
+                    cached: true,
+                    engagementAndSentiment:
+                        existingAnalysis
+                            .engagementAndSentiment,
+                    metadata:
+                        existingAnalysis.metadata,
+                });
+            }
+
+            await SessionAIAnalysis.findOneAndUpdate(
+                {
+                    sessionId: session._id,
+                },
+                {
+                    $set: {
+                        sessionCode: session.sessionCode,
+                        lecturerId: session.lecturerId,
+
+                        "engagementAndSentiment.status":
+                            "generating",
+
+                        "engagementAndSentiment.errorMessage":
+                            "",
+                    },
+                },
+                {
+                    returnDocument: "after",
+                    upsert: true,
+                    setDefaultsOnInsert: true,
+                }
+            );
+
+            /*
+              A session with no questions still has useful
+              objective engagement metrics. No Gemini request
+              is necessary in that case.
+            */
+
+            if (questions.length === 0) {
+                const generatedAt = new Date();
+
+                const savedAnalysis =
+                    await SessionAIAnalysis.findOneAndUpdate(
+                        {
+                            sessionId: session._id,
+                        },
+                        {
+                            $set: {
+                                sessionCode:
+                                    session.sessionCode,
+
+                                lecturerId:
+                                    session.lecturerId,
+
+                                "engagementAndSentiment.status":
+                                    "completed",
+
+                                "engagementAndSentiment.metrics":
+                                    metrics,
+
+                                "engagementAndSentiment.engagementScore":
+                                    metrics.engagementScore,
+
+                                "engagementAndSentiment.engagementLevel":
+                                    metrics.engagementLevel,
+
+                                "engagementAndSentiment.overallLearningSignal":
+                                    "Neutral",
+
+                                "engagementAndSentiment.signalDistribution":
+                                {
+                                    positive: 0,
+                                    neutral: 0,
+                                    confused: 0,
+                                },
+
+                                "engagementAndSentiment.observations":
+                                    [
+                                        "No student questions were submitted during this session.",
+                                    ],
+
+                                "engagementAndSentiment.confusionIndicators":
+                                    [],
+
+                                "engagementAndSentiment.positiveIndicators":
+                                    [],
+
+                                "engagementAndSentiment.recommendedActions":
+                                    [
+                                        "Encourage students to submit questions or comprehension checks in the next session.",
+                                    ],
+
+                                "engagementAndSentiment.contentFingerprint":
+                                    contentFingerprint,
+
+                                "engagementAndSentiment.generatedAt":
+                                    generatedAt,
+
+                                "engagementAndSentiment.errorMessage":
+                                    "",
+
+                                "metadata.lastGeneratedAt":
+                                    generatedAt,
+                            },
+                        },
+                        {
+                            returnDocument: "after",
+                        }
+                    );
+
+                return res.status(200).json({
+                    success: true,
+                    message:
+                        "Engagement metrics calculated. No questions required AI analysis.",
+                    cached: false,
+                    aiUsed: false,
+                    engagementAndSentiment:
+                        savedAnalysis
+                            .engagementAndSentiment,
+                    metadata: savedAnalysis.metadata,
+                });
+            }
+
+            /*
+              Only anonymous question content is supplied to
+              Gemini. Student IDs and names are excluded.
+            */
+
+            const anonymousQuestionContext = questions
+                .map(
+                    (question, index) => `
+Question ${index + 1}:
+${question.question}
+
+Status:
+${question.status || "Pending"}
+
+Lecturer answer available:
+${question.answer?.trim() ? "Yes" : "No"}
+
+Pinned by lecturer:
+${question.pinned ? "Yes" : "No"}
+          `.trim()
+                )
+                .join("\n\n");
+
+            const prompt = `
+You are analysing aggregated learning and engagement signals from anonymous university classroom questions.
+
+Session title: ${session.title}
+Subject: ${session.subjectName}
+Subject code: ${session.moduleCode}
+Session status: ${session.status}
+
+Platform-calculated metrics:
+- Registered students: ${metrics.registeredStudents}
+- Joined students: ${metrics.joinedStudents}
+- Participation rate: ${metrics.participationRate}%
+- Total questions: ${metrics.totalQuestions}
+- Answered questions: ${metrics.answeredQuestions}
+- Pending questions: ${metrics.pendingQuestions}
+- Questions per participant: ${metrics.questionsPerParticipant}
+- Lecturer response rate: ${metrics.lecturerResponseRate}%
+- Engagement score: ${metrics.engagementScore}%
+- Engagement level: ${metrics.engagementLevel}
+
+Anonymous questions:
+${anonymousQuestionContext}
+
+Instructions:
+
+1. Classify each numbered question using exactly one learning-language signal:
+   - Positive: indicates understanding, confirmation or constructive progress.
+   - Neutral: requests factual information without a clear confusion signal.
+   - Confused: indicates misunderstanding, uncertainty, difficulty or repeated clarification.
+
+2. Return every question number exactly once.
+3. Do not identify or make assumptions about individual students.
+4. Do not diagnose emotions, mental state, motivation or ability.
+5. Create concise aggregated classroom observations.
+6. Identify confusion indicators supported by the supplied questions.
+7. Identify positive learning indicators only when supported by the questions.
+8. Suggest practical lecturer actions grounded in the supplied evidence.
+9. Do not change or recalculate the supplied platform metrics.
+10. Return only JSON matching the required schema.
+      `.trim();
+
+            const responseJsonSchema = {
+                type: "object",
+
+                properties: {
+                    questionSignals: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                questionNumber: {
+                                    type: "integer",
+                                },
+
+                                signal: {
+                                    type: "string",
+                                    enum: [
+                                        "Positive",
+                                        "Neutral",
+                                        "Confused",
+                                    ],
+                                },
+                            },
+                            required: [
+                                "questionNumber",
+                                "signal",
+                            ],
+                        },
+                    },
+
+                    observations: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+
+                    confusionIndicators: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+
+                    positiveIndicators: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+
+                    recommendedActions: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+                },
+
+                required: [
+                    "questionSignals",
+                    "observations",
+                    "confusionIndicators",
+                    "positiveIndicators",
+                    "recommendedActions",
+                ],
+            };
+
+            const generatedResult =
+                await generateStructuredContent({
+                    prompt,
+                    responseJsonSchema,
+                });
+
+            const {
+                distribution,
+                overallLearningSignal,
+            } = calculateLearningSignalDistribution({
+                generatedSignals:
+                    generatedResult.questionSignals,
+                totalQuestions: questions.length,
+            });
+
+            const generatedAt = new Date();
+
+            const savedAnalysis =
+                await SessionAIAnalysis.findOneAndUpdate(
+                    {
+                        sessionId: session._id,
+                    },
+                    {
+                        $set: {
+                            sessionCode:
+                                session.sessionCode,
+
+                            lecturerId:
+                                session.lecturerId,
+
+                            "engagementAndSentiment.status":
+                                "completed",
+
+                            "engagementAndSentiment.metrics":
+                                metrics,
+
+                            "engagementAndSentiment.engagementScore":
+                                metrics.engagementScore,
+
+                            "engagementAndSentiment.engagementLevel":
+                                metrics.engagementLevel,
+
+                            "engagementAndSentiment.overallLearningSignal":
+                                overallLearningSignal,
+
+                            "engagementAndSentiment.signalDistribution":
+                                distribution,
+
+                            "engagementAndSentiment.observations":
+                                cleanEngagementStringArray(
+                                    generatedResult.observations
+                                ),
+
+                            "engagementAndSentiment.confusionIndicators":
+                                distribution.confused > 0
+                                    ? cleanEngagementStringArray(
+                                        generatedResult.confusionIndicators
+                                    )
+                                    : [],
+
+                            "engagementAndSentiment.positiveIndicators":
+                                distribution.positive > 0
+                                    ? cleanEngagementStringArray(
+                                        generatedResult.positiveIndicators
+                                    )
+                                    : [],
+
+                            "engagementAndSentiment.recommendedActions":
+                                cleanEngagementStringArray(
+                                    generatedResult
+                                        .recommendedActions
+                                ),
+
+                            "engagementAndSentiment.contentFingerprint":
+                                contentFingerprint,
+
+                            "engagementAndSentiment.generatedAt":
+                                generatedAt,
+
+                            "engagementAndSentiment.errorMessage":
+                                "",
+
+                            "metadata.provider":
+                                "Google Gemini",
+
+                            "metadata.model":
+                                getGeminiModel(),
+
+                            "metadata.lastGeneratedAt":
+                                generatedAt,
+                        },
+                    },
+                    {
+                        returnDocument: "after",
+                    }
+                );
+
+            return res.status(200).json({
+                success: true,
+                message:
+                    "Engagement and learning-signal analysis generated successfully",
+                cached: false,
+                aiUsed: true,
+                engagementAndSentiment:
+                    savedAnalysis
+                        .engagementAndSentiment,
+                metadata: savedAnalysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Generate engagement analysis error:",
+                error
+            );
+
+            if (session?._id) {
+                try {
+                    await SessionAIAnalysis.findOneAndUpdate(
+                        {
+                            sessionId: session._id,
+                        },
+                        {
+                            $set: {
+                                "engagementAndSentiment.status":
+                                    "failed",
+
+                                "engagementAndSentiment.errorMessage":
+                                    error.message ||
+                                    "Engagement analysis failed",
+                            },
+                        },
+                        {
+                            returnDocument: "after",
+                        }
+                    );
+                } catch (saveError) {
+                    console.error(
+                        "Save engagement analysis failure error:",
+                        saveError
+                    );
+                }
+            }
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    error.message ||
+                    "Unable to generate engagement analysis",
+            });
+        }
+    }
+);
+
+/*
+  Load a lecturer's saved engagement and
+  aggregated learning-signal analysis.
+*/
+
+router.get(
+    "/ai/sessions/:sessionId/engagement-sentiment",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const { lecturerId } = req.query;
+
+            const session = await findLecturerSession({
+                sessionId,
+                lecturerId,
+            });
+
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to view its engagement analysis",
+                });
+            }
+
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                }).select(
+                    "engagementAndSentiment metadata"
+                );
+
+            if (
+                !analysis ||
+                analysis.engagementAndSentiment
+                    .status === "not_generated"
+            ) {
+                return res.status(404).json({
+                    success: false,
+                    status: "not_generated",
+                    message:
+                        "Engagement analysis has not been generated for this session",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+
+                session: {
+                    _id: session._id,
+                    title: session.title,
+                    moduleCode: session.moduleCode,
+                    subjectName: session.subjectName,
+                    sessionCode: session.sessionCode,
+                    lecturerName: session.lecturerName,
+                    status: session.status,
+                },
+
+                engagementAndSentiment:
+                    analysis.engagementAndSentiment,
+
+                metadata: analysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Get engagement analysis error:",
+                error
+            );
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to load engagement analysis",
+            });
+        }
+    }
 );
 
 module.exports = router;

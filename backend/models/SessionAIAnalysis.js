@@ -231,20 +231,77 @@ const sessionAIAnalysisSchema =
                     default: "not_generated",
                 },
 
-                overallSentiment: {
-                    type: String,
-                    enum: [
-                        "",
-                        "Positive",
-                        "Neutral",
-                        "Confused",
-                        "Negative",
-                        "Mixed",
-                    ],
-                    default: "",
+                /*
+                  Deterministic engagement metrics calculated by
+                  Ultra Class from session participation and
+                  question activity.
+                */
+
+                metrics: {
+                    registeredStudents: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    joinedStudents: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    participationRate: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                        max: 100,
+                    },
+
+                    totalQuestions: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    answeredQuestions: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    pendingQuestions: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    pinnedQuestions: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    questionsPerParticipant: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    lecturerResponseRate: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                        max: 100,
+                    },
                 },
 
-                sentimentScore: {
+                /*
+                  Combined engagement score calculated from
+                  participation, question activity and lecturer
+                  response coverage.
+                */
+
+                engagementScore: {
                     type: Number,
                     default: 0,
                     min: 0,
@@ -257,16 +314,91 @@ const sessionAIAnalysisSchema =
                     default: "",
                 },
 
+                /*
+                  Aggregated learning-language signals detected
+                  from anonymous questions.
+
+                  These values do not claim to identify individual
+                  student emotions.
+                */
+
+                overallLearningSignal: {
+                    type: String,
+                    enum: [
+                        "",
+                        "Positive",
+                        "Neutral",
+                        "Confused",
+                        "Mixed",
+                    ],
+                    default: "",
+                },
+
+                signalDistribution: {
+                    positive: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    neutral: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+
+                    confused: {
+                        type: Number,
+                        default: 0,
+                        min: 0,
+                    },
+                },
+
+                /*
+                  AI-generated aggregated observations.
+                */
+
                 observations: {
                     type: [String],
                     default: [],
+                },
+
+                confusionIndicators: {
+                    type: [String],
+                    default: [],
+                },
+
+                positiveIndicators: {
+                    type: [String],
+                    default: [],
+                },
+
+                recommendedActions: {
+                    type: [String],
+                    default: [],
+                },
+
+                /*
+                  Used to avoid unnecessary Gemini requests when
+                  the session questions and answers have not changed.
+                */
+
+                contentFingerprint: {
+                    type: String,
+                    default: "",
                 },
 
                 generatedAt: {
                     type: Date,
                     default: null,
                 },
+
+                errorMessage: {
+                    type: String,
+                    default: "",
+                },
             },
+
 
             teachingRecommendations: {
                 status: {

@@ -6,6 +6,7 @@ import SessionDetails from "./SessionDetails";
 import ManageQuestions from "./ManageQuestions";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SessionSummary from "./SessionSummary";
+import EngagementAnalysis from "./EngagementAnalysis";
 import Attendance from "./Attendance";
 import CreateSession from "./CreateSession";
 import SessionParticipants from "./SessionParticipants";
@@ -343,6 +344,7 @@ function LecturerDashboard({ user, logout }) {
     "questions",
     "analytics",
     "summary",
+    "engagement",
   ].includes(activeTab);
 
   return (
@@ -687,6 +689,9 @@ function LecturerDashboard({ user, logout }) {
                 onViewSummary={() => {
                   setActiveTab("summary");
                 }}
+                onViewEngagement={() => {
+                  setActiveTab("engagement");
+                }}
               />
             )}
 
@@ -749,6 +754,17 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
+          {/* AI ENGAGEMENT AND LEARNING SIGNALS */}
+
+          {activeTab === "engagement" &&
+            selectedSession && (
+              <EngagementAnalysis
+                session={selectedSession}
+                user={user}
+                onBack={returnToSelectedSession}
+              />
+            )}
+
           {activeTab === "analytics" &&
             selectedSession && (
               <AnalyticsDashboard
@@ -764,7 +780,8 @@ function LecturerDashboard({ user, logout }) {
 
           {(activeTab === "questions" ||
             activeTab === "analytics" ||
-            activeTab === "summary") &&
+            activeTab === "summary" ||
+            activeTab === "engagement") &&
             !selectedSession && (
               <section className="main-card">
                 <h2>No Session Selected</h2>

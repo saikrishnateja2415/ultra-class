@@ -11,6 +11,7 @@ function SessionDetails({
   onViewParticipants,
   onViewAnalytics,
   onViewSummary,
+  onViewEngagement,
   onEndSession,
 }) {
   const [endingSession, setEndingSession] =
@@ -22,12 +23,6 @@ function SessionDetails({
 
   const sessionEnded =
     session.status === "ended";
-
-  /*
-  ================================================
-  END SESSION
-  ================================================
-  */
 
   const handleEndSession = async () => {
     if (sessionEnded) {
@@ -196,6 +191,14 @@ function SessionDetails({
           onClick={onViewSummary}
         >
           AI Session Summary
+        </button>
+
+        <button
+          type="button"
+          className="details-engagement-btn"
+          onClick={onViewEngagement}
+        >
+          Engagement Analysis
         </button>
 
         <button
