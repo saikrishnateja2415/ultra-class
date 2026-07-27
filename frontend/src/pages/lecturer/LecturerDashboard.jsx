@@ -5,6 +5,7 @@ import Header from "../../components/Header";
 import SessionDetails from "./SessionDetails";
 import ManageQuestions from "./ManageQuestions";
 import AnalyticsDashboard from "./AnalyticsDashboard";
+import SessionSummary from "./SessionSummary";
 import Attendance from "./Attendance";
 import CreateSession from "./CreateSession";
 import SessionParticipants from "./SessionParticipants";
@@ -121,7 +122,7 @@ function LecturerDashboard({ user, logout }) {
 
       alert(
         error.response?.data?.message ||
-          "Error loading sessions"
+        "Error loading sessions"
       );
     } finally {
       setLoadingSessions(false);
@@ -159,7 +160,7 @@ function LecturerDashboard({ user, logout }) {
 
       alert(
         error.response?.data?.message ||
-          "Error deleting session"
+        "Error deleting session"
       );
     }
   };
@@ -207,7 +208,7 @@ function LecturerDashboard({ user, logout }) {
 
       alert(
         error.response?.data?.message ||
-          "Unable to end the session"
+        "Unable to end the session"
       );
 
       throw error;
@@ -257,15 +258,15 @@ function LecturerDashboard({ user, logout }) {
     totalQuestions === 0
       ? 0
       : Math.round(
-          (answeredQuestions / totalQuestions) * 100
-        );
+        (answeredQuestions / totalQuestions) * 100
+      );
 
   const pendingRate =
     totalQuestions === 0
       ? 0
       : Math.round(
-          (pendingQuestions / totalQuestions) * 100
-        );
+        (pendingQuestions / totalQuestions) * 100
+      );
 
   /*
     This is an overall dashboard indicator only.
@@ -276,14 +277,14 @@ function LecturerDashboard({ user, logout }) {
     totalSessions === 0
       ? 0
       : Math.min(
-          100,
-          Math.round(
-            (totalQuestions * 4 +
-              answeredQuestions * 3 +
-              totalStudentJoins * 2) /
-              totalSessions
-          )
-        );
+        100,
+        Math.round(
+          (totalQuestions * 4 +
+            answeredQuestions * 3 +
+            totalStudentJoins * 2) /
+          totalSessions
+        )
+      );
 
   const recentSessions = sessions.slice(0, 3);
 
@@ -300,9 +301,9 @@ function LecturerDashboard({ user, logout }) {
 
           return (
             questionSessionId?.toString() ===
-              session._id?.toString() ||
+            session._id?.toString() ||
             question.sessionCode ===
-              session.sessionCode
+            session.sessionCode
           );
         }
       ).length,
@@ -313,10 +314,10 @@ function LecturerDashboard({ user, logout }) {
     sessionsWithQuestionCounts.length === 0
       ? null
       : [...sessionsWithQuestionCounts].sort(
-          (firstSession, secondSession) =>
-            secondSession.questionCount -
-            firstSession.questionCount
-        )[0];
+        (firstSession, secondSession) =>
+          secondSession.questionCount -
+          firstSession.questionCount
+      )[0];
 
 
   const openSessions = () => {
@@ -341,6 +342,7 @@ function LecturerDashboard({ user, logout }) {
     "sessions",
     "questions",
     "analytics",
+    "summary",
   ].includes(activeTab);
 
   return (
@@ -682,6 +684,9 @@ function LecturerDashboard({ user, logout }) {
                 onViewAnalytics={() => {
                   setActiveTab("analytics");
                 }}
+                onViewSummary={() => {
+                  setActiveTab("summary");
+                }}
               />
             )}
 
@@ -733,6 +738,17 @@ function LecturerDashboard({ user, logout }) {
 
           {/* SESSION-SPECIFIC ANALYTICS */}
 
+          {/* AI SESSION SUMMARY */}
+
+          {activeTab === "summary" &&
+            selectedSession && (
+              <SessionSummary
+                session={selectedSession}
+                onBack={returnToSelectedSession}
+                onEndSession={endSession}
+              />
+            )}
+
           {activeTab === "analytics" &&
             selectedSession && (
               <AnalyticsDashboard
@@ -747,7 +763,8 @@ function LecturerDashboard({ user, logout }) {
           {/* SAFETY MESSAGE */}
 
           {(activeTab === "questions" ||
-            activeTab === "analytics") &&
+            activeTab === "analytics" ||
+            activeTab === "summary") &&
             !selectedSession && (
               <section className="main-card">
                 <h2>No Session Selected</h2>

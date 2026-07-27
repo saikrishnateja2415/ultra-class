@@ -5,6 +5,9 @@ const Staff = require("../models/Staff");
 const Student = require("../models/Student");
 const Subject = require("../models/Subject");
 const Course = require("../models/Course");
+const SessionAIAnalysis = require(
+  "../models/SessionAIAnalysis"
+);
 
 const router = express.Router();
 
@@ -758,6 +761,196 @@ router.post(
       return res.status(500).json({
         success: false,
         message: "Error joining session",
+      });
+    }
+  }
+);
+
+
+router.get(
+  "/student/:studentId/joined-sessions",
+  async (req, res) => {
+    try {
+      /*
+        studentId is the logged-in User account ID.
+      */
+
+      const { studentId } = req.params;
+
+      const student = await Student.findOne({
+        userId: studentId,
+        status: "active",
+      }).select("_id subjects status");
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Active student profile not found",
+        });
+      }
+
+      /*
+        Session.participants stores Student profile
+        IDs, not User account IDs.
+      */
+
+      const sessions = await Session.find({
+        "participants.studentId":
+          student._id,
+      })
+        .populate({
+          path: "subjectId",
+          select:
+            "subjectName subjectCode",
+        })
+        .sort({
+          createdAt: -1,
+        })
+        .lean();
+
+      const sessionIds = sessions.map(
+        (session) => session._id
+      );
+
+      /*
+        Find sessions with a completed and published
+        summary. Private drafts are excluded.
+      */
+
+      const publishedAnalyses =
+        sessionIds.length === 0
+          ? []
+          : await SessionAIAnalysis.find({
+              sessionId: {
+                $in: sessionIds,
+              },
+
+              "sessionSummary.status":
+                "completed",
+
+              "sessionSummary.isPublished":
+                true,
+            })
+              .select(
+                "sessionId sessionSummary.publishedAt"
+              )
+              .lean();
+
+      const publishedSummaryMap = new Map(
+        publishedAnalyses.map((analysis) => [
+          analysis.sessionId.toString(),
+
+          analysis.sessionSummary
+            .publishedAt,
+        ])
+      );
+
+      const formattedSessions = sessions.map(
+        (session) => {
+          const participation =
+            (
+              session.participants || []
+            ).find(
+              (participant) =>
+                participant.studentId.toString() ===
+                student._id.toString()
+            );
+
+          const publishedAt =
+            publishedSummaryMap.get(
+              session._id.toString()
+            ) || null;
+
+          return {
+            _id: session._id,
+            title: session.title,
+
+            moduleCode:
+              session.moduleCode,
+
+            subjectName:
+              session.subjectName ||
+              session.subjectId
+                ?.subjectName ||
+              "Subject unavailable",
+
+            sessionCode:
+              session.sessionCode,
+
+            lecturerName:
+              session.lecturerName,
+
+            status: session.status,
+
+            createdAt:
+              session.createdAt,
+
+            endedAt:
+              session.endedAt,
+
+            joinedAt:
+              participation?.joinedAt ||
+              null,
+
+            summaryAvailable:
+              session.status === "ended" &&
+              Boolean(publishedAt),
+
+            summaryPublishedAt:
+              publishedAt,
+          };
+        }
+      );
+
+      const activeCount =
+        formattedSessions.filter(
+          (session) =>
+            session.status === "active"
+        ).length;
+
+      const endedCount =
+        formattedSessions.filter(
+          (session) =>
+            session.status === "ended"
+        ).length;
+
+      const summariesAvailable =
+        formattedSessions.filter(
+          (session) =>
+            session.summaryAvailable
+        ).length;
+
+      return res.status(200).json({
+        success: true,
+
+        totalSessions:
+          formattedSessions.length,
+
+        activeCount,
+        endedCount,
+        summariesAvailable,
+
+        sessions: formattedSessions,
+      });
+    } catch (error) {
+      console.error(
+        "Get student joined sessions error:",
+        error
+      );
+
+      if (error.name === "CastError") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid student information",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to load joined sessions",
       });
     }
   }

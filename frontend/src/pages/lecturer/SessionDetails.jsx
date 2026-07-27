@@ -10,6 +10,7 @@ function SessionDetails({
   onManageQuestions,
   onViewParticipants,
   onViewAnalytics,
+  onViewSummary,
   onEndSession,
 }) {
   const [endingSession, setEndingSession] =
@@ -21,6 +22,12 @@ function SessionDetails({
 
   const sessionEnded =
     session.status === "ended";
+
+  /*
+  ================================================
+  END SESSION
+  ================================================
+  */
 
   const handleEndSession = async () => {
     if (sessionEnded) {
@@ -56,6 +63,10 @@ function SessionDetails({
 
       <div className="details-header">
         <div>
+          <span className="details-page-label">
+            Classroom Session
+          </span>
+
           <h2>{session.title}</h2>
 
           {session.subjectName && (
@@ -106,6 +117,24 @@ function SessionDetails({
             <strong>Status:</strong>{" "}
             {session.status}
           </p>
+
+          {session.createdAt && (
+            <p>
+              <strong>Created:</strong>{" "}
+              {new Date(
+                session.createdAt
+              ).toLocaleString()}
+            </p>
+          )}
+
+          {session.endedAt && (
+            <p>
+              <strong>Ended:</strong>{" "}
+              {new Date(
+                session.endedAt
+              ).toLocaleString()}
+            </p>
+          )}
         </div>
 
         <div className="details-qr-card">
@@ -159,6 +188,14 @@ function SessionDetails({
           onClick={onViewAnalytics}
         >
           View Analytics
+        </button>
+
+        <button
+          type="button"
+          className="details-ai-summary-btn"
+          onClick={onViewSummary}
+        >
+          AI Session Summary
         </button>
 
         <button
