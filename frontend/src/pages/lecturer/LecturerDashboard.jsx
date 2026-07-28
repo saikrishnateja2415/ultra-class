@@ -7,10 +7,12 @@ import ManageQuestions from "./ManageQuestions";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SessionSummary from "./SessionSummary";
 import EngagementAnalysis from "./EngagementAnalysis";
+import TeachingRecommendations from "./TeachingRecommendations";
 import Attendance from "./Attendance";
 import CreateSession from "./CreateSession";
 import SessionParticipants from "./SessionParticipants";
 import SessionList from "./SessionList";
+import LecturerSettings from "./LecturerSettings";
 
 import "./LecturerDashboard.css";
 
@@ -345,6 +347,7 @@ function LecturerDashboard({ user, logout }) {
     "analytics",
     "summary",
     "engagement",
+    "teaching",
   ].includes(activeTab);
 
   return (
@@ -692,6 +695,9 @@ function LecturerDashboard({ user, logout }) {
                 onViewEngagement={() => {
                   setActiveTab("engagement");
                 }}
+                onViewTeachingRecommendations={() => {
+                  setActiveTab("teaching");
+                }}
               />
             )}
 
@@ -765,6 +771,17 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
+          {/* AI TEACHING RECOMMENDATIONS */}
+
+          {activeTab === "teaching" &&
+            selectedSession && (
+              <TeachingRecommendations
+                session={selectedSession}
+                user={user}
+                onBack={returnToSelectedSession}
+              />
+            )}
+
           {activeTab === "analytics" &&
             selectedSession && (
               <AnalyticsDashboard
@@ -781,7 +798,8 @@ function LecturerDashboard({ user, logout }) {
           {(activeTab === "questions" ||
             activeTab === "analytics" ||
             activeTab === "summary" ||
-            activeTab === "engagement") &&
+            activeTab === "engagement" ||
+            activeTab === "teaching") &&
             !selectedSession && (
               <section className="main-card">
                 <h2>No Session Selected</h2>
@@ -808,15 +826,13 @@ function LecturerDashboard({ user, logout }) {
 
           {/* SETTINGS */}
 
-          {activeTab === "settings" && (
-            <section className="main-card">
-              <h2>Settings</h2>
+          {/* LECTURER SETTINGS */}
 
-              <p>
-                Lecturer profile and session
-                settings will be added here.
-              </p>
-            </section>
+          {activeTab === "settings" && (
+            <LecturerSettings
+              user={user}
+              logout={logout}
+            />
           )}
         </main>
       </div>

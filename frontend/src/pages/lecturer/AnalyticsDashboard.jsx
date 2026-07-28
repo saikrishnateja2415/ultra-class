@@ -504,29 +504,6 @@ function AnalyticsDashboard({
           </div>
         </div>
       </div>
-
-      <div className="analytics-panel ai-preview-panel">
-        <h2>AI Classroom Intelligence</h2>
-
-        <div className="ai-insight-card">
-          <span>Current Rule-Based Insight</span>
-
-          <h3>
-            {totalQuestions === 0
-              ? "No questions were submitted in this session"
-              : pendingQuestions > answeredQuestions
-                ? "Several student questions still need lecturer attention"
-                : "Question response progress is currently positive"}
-          </h3>
-
-          <p>
-            After session analytics is completed, this
-            section will display AI question clusters,
-            session summaries, sentiment analysis and
-            teaching recommendations for this session.
-          </p>
-        </div>
-      </div>
     </section>
   );
 }

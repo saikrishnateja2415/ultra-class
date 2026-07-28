@@ -412,17 +412,113 @@ const sessionAIAnalysisSchema =
                     default: "not_generated",
                 },
 
-                recommendations: {
-                    type: [String],
-                    default: [],
-                },
+                /*
+                  The most important topic that requires
+                  lecturer attention based on session evidence.
+                */
 
                 priorityTopic: {
                     type: String,
                     default: "",
+                    trim: true,
                 },
 
+                /*
+                  The single most useful immediate action for
+                  the lecturer.
+                */
+
                 suggestedNextAction: {
+                    type: String,
+                    default: "",
+                    trim: true,
+                },
+
+                /*
+                  Structured, evidence-based recommendations.
+                */
+
+                recommendations: {
+                    type: [
+                        {
+                            title: {
+                                type: String,
+                                required: true,
+                                trim: true,
+                            },
+
+                            category: {
+                                type: String,
+                                enum: [
+                                    "Concept Clarification",
+                                    "Student Engagement",
+                                    "Question Response",
+                                    "Assessment",
+                                    "Revision Support",
+                                    "Teaching Strategy",
+                                    "Other",
+                                ],
+                                default: "Teaching Strategy",
+                            },
+
+                            priority: {
+                                type: String,
+                                enum: [
+                                    "Low",
+                                    "Medium",
+                                    "High",
+                                ],
+                                default: "Medium",
+                            },
+
+                            rationale: {
+                                type: String,
+                                default: "",
+                                trim: true,
+                            },
+
+                            evidence: {
+                                type: String,
+                                default: "",
+                                trim: true,
+                            },
+
+                            action: {
+                                type: String,
+                                default: "",
+                                trim: true,
+                            },
+                        },
+                    ],
+                    default: [],
+                },
+
+                /*
+                  A concise plan for the lecturer's next
+                  classroom session.
+                */
+
+                nextSessionPlan: {
+                    type: [String],
+                    default: [],
+                },
+
+                /*
+                  Questions the lecturer can ask to check
+                  student understanding.
+                */
+
+                followUpQuestions: {
+                    type: [String],
+                    default: [],
+                },
+
+                /*
+                  Fingerprint of questions and previously saved
+                  AI analysis used to create the recommendations.
+                */
+
+                contentFingerprint: {
                     type: String,
                     default: "",
                 },
@@ -430,6 +526,11 @@ const sessionAIAnalysisSchema =
                 generatedAt: {
                     type: Date,
                     default: null,
+                },
+
+                errorMessage: {
+                    type: String,
+                    default: "",
                 },
             },
 

@@ -324,6 +324,155 @@ function calculateLearningSignalDistribution({
     };
 }
 
+/*
+  Create a fingerprint from the current questions and
+  completed AI analysis used by Feature 4.
+
+  Recommendations regenerate when questions, answers,
+  clustering, summary or engagement analysis changes.
+*/
+
+function createTeachingRecommendationsFingerprint({
+    questions,
+    analysis,
+}) {
+    const clustering =
+        analysis?.questionClustering || {};
+
+    const sessionSummary =
+        analysis?.sessionSummary || {};
+
+    const engagement =
+        analysis?.engagementAndSentiment || {};
+
+    const fingerprintContent = {
+        questionContent:
+            createSummaryContentFingerprint(questions),
+
+        clusteringFingerprint:
+            clustering.questionFingerprint || "",
+
+        summaryFingerprint:
+            sessionSummary.contentFingerprint || "",
+
+        engagementFingerprint:
+            engagement.contentFingerprint || "",
+
+        clusters: (clustering.clusters || []).map(
+            (cluster) => ({
+                name: cluster.clusterName,
+                priority: cluster.priority,
+                questionCount: cluster.questionCount,
+            })
+        ),
+
+        engagementScore:
+            engagement.engagementScore || 0,
+
+        engagementLevel:
+            engagement.engagementLevel || "",
+
+        overallLearningSignal:
+            engagement.overallLearningSignal || "",
+
+        confusionIndicators:
+            engagement.confusionIndicators || [],
+
+        responseRate:
+            engagement.metrics?.lecturerResponseRate ||
+            0,
+    };
+
+    return crypto
+        .createHash("sha256")
+        .update(JSON.stringify(fingerprintContent))
+        .digest("hex");
+}
+
+/*
+  Validate and clean structured recommendations
+  returned by Gemini before storing them.
+*/
+
+function cleanTeachingRecommendations(items) {
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    const acceptedCategories = [
+        "Concept Clarification",
+        "Student Engagement",
+        "Question Response",
+        "Assessment",
+        "Revision Support",
+        "Teaching Strategy",
+        "Other",
+    ];
+
+    const acceptedPriorities = [
+        "Low",
+        "Medium",
+        "High",
+    ];
+
+    const usedTitles = new Set();
+
+    return items
+        .map((item) => {
+            const title =
+                typeof item?.title === "string"
+                    ? item.title.trim()
+                    : "";
+
+            if (!title) {
+                return null;
+            }
+
+            const normalisedTitle =
+                title.toLowerCase();
+
+            if (usedTitles.has(normalisedTitle)) {
+                return null;
+            }
+
+            usedTitles.add(normalisedTitle);
+
+            return {
+                title,
+
+                category:
+                    acceptedCategories.includes(
+                        item.category
+                    )
+                        ? item.category
+                        : "Teaching Strategy",
+
+                priority:
+                    acceptedPriorities.includes(
+                        item.priority
+                    )
+                        ? item.priority
+                        : "Medium",
+
+                rationale:
+                    typeof item.rationale === "string"
+                        ? item.rationale.trim()
+                        : "",
+
+                evidence:
+                    typeof item.evidence === "string"
+                        ? item.evidence.trim()
+                        : "",
+
+                action:
+                    typeof item.action === "string"
+                        ? item.action.trim()
+                        : "",
+            };
+        })
+        .filter(Boolean)
+        .slice(0, 8);
+}
 
 async function findLecturerSession({
     sessionId,
@@ -1776,6 +1925,644 @@ router.put(
     }
 );
 
+/*
+  AI FEATURE 4
+  Generate evidence-based teaching recommendations
+  for a selected classroom session.
+*/
+
+router.post(
+    "/ai/sessions/:sessionId/teaching-recommendations",
+    async (req, res) => {
+        let session = null;
+
+        try {
+            const { sessionId } = req.params;
+
+            const {
+                lecturerId,
+                forceRegenerate = false,
+            } = req.body;
+
+            session = await findLecturerSession({
+                sessionId,
+                lecturerId,
+            });
+
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to generate recommendations",
+                });
+            }
+
+            const questions = await Question.find({
+                sessionId: session._id,
+            })
+                .select(
+                    "question answer status pinned createdAt updatedAt"
+                )
+                .sort({ createdAt: 1 });
+
+            if (questions.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "At least one student question is required to generate teaching recommendations",
+                });
+            }
+
+            const existingAnalysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                });
+
+            /*
+              Feature 4 depends on Feature 3 because the
+              recommendations require verified engagement
+              metrics and aggregated learning signals.
+            */
+
+            if (
+                !existingAnalysis ||
+                existingAnalysis.engagementAndSentiment
+                    ?.status !== "completed"
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Generate the engagement analysis before creating teaching recommendations",
+                });
+            }
+
+            const contentFingerprint =
+                createTeachingRecommendationsFingerprint({
+                    questions,
+                    analysis: existingAnalysis,
+                });
+
+            if (
+                !forceRegenerate &&
+                existingAnalysis
+                    .teachingRecommendations
+                    ?.status === "completed" &&
+                existingAnalysis
+                    .teachingRecommendations
+                    .contentFingerprint ===
+                contentFingerprint
+            ) {
+                return res.status(200).json({
+                    success: true,
+                    message:
+                        "Saved teaching recommendations loaded",
+                    cached: true,
+                    teachingRecommendations:
+                        existingAnalysis
+                            .teachingRecommendations,
+                    metadata:
+                        existingAnalysis.metadata,
+                });
+            }
+
+            await SessionAIAnalysis.findOneAndUpdate(
+                {
+                    sessionId: session._id,
+                },
+                {
+                    $set: {
+                        sessionCode: session.sessionCode,
+                        lecturerId: session.lecturerId,
+
+                        "teachingRecommendations.status":
+                            "generating",
+
+                        "teachingRecommendations.errorMessage":
+                            "",
+                    },
+                },
+                {
+                    returnDocument: "after",
+                    upsert: true,
+                    setDefaultsOnInsert: true,
+                }
+            );
+
+            const clustering =
+                existingAnalysis.questionClustering;
+
+            const sessionSummary =
+                existingAnalysis.sessionSummary;
+
+            const engagement =
+                existingAnalysis.engagementAndSentiment;
+
+            const clusterContext =
+                clustering?.status === "completed" &&
+                    clustering.clusters?.length > 0
+                    ? clustering.clusters
+                        .map(
+                            (cluster, index) =>
+                                `${index + 1}. ${cluster.clusterName
+                                } | Priority: ${cluster.priority
+                                } | Questions: ${cluster.questionCount
+                                } | ${cluster.description}`
+                        )
+                        .join("\n")
+                    : "No saved question clusters are available.";
+
+            const summaryContext =
+                sessionSummary?.status === "completed"
+                    ? `
+Overview:
+${sessionSummary.summary || "Not available"}
+
+Key topics:
+${(sessionSummary.keyTopics || []).join(
+                        "; "
+                    ) || "None identified"}
+
+Common difficulties:
+${(
+                            sessionSummary.commonDifficulties || []
+                        ).join("; ") || "None identified"}
+
+Important lecturer explanations:
+${(
+                            sessionSummary.importantExplanations ||
+                            []
+                        ).join("; ") || "None provided"}
+
+Revision points:
+${(
+                            sessionSummary.revisionPoints || []
+                        ).join("; ") || "None provided"}
+          `.trim()
+                    : "No saved session summary is available.";
+
+            const metrics =
+                engagement.metrics || {};
+
+            const engagementContext = `
+Engagement score:
+${engagement.engagementScore || 0}%
+
+Engagement level:
+${engagement.engagementLevel || "Low"}
+
+Registered students:
+${metrics.registeredStudents || 0}
+
+Joined students:
+${metrics.joinedStudents || 0}
+
+Participation rate:
+${metrics.participationRate || 0}%
+
+Total questions:
+${metrics.totalQuestions || 0}
+
+Answered questions:
+${metrics.answeredQuestions || 0}
+
+Pending questions:
+${metrics.pendingQuestions || 0}
+
+Questions per participant:
+${metrics.questionsPerParticipant || 0}
+
+Lecturer response rate:
+${metrics.lecturerResponseRate || 0}%
+
+Overall learning signal:
+${engagement.overallLearningSignal ||
+                "Neutral"}
+
+Confusion indicators:
+${(
+                    engagement.confusionIndicators || []
+                ).join("; ") || "None detected"}
+
+Positive indicators:
+${(
+                    engagement.positiveIndicators || []
+                ).join("; ") || "None detected"}
+
+Previous suggested actions:
+${(
+                    engagement.recommendedActions || []
+                ).join("; ") || "None generated"}
+      `.trim();
+
+            /*
+              Student identities are intentionally excluded.
+            */
+
+            const questionContext = questions
+                .map((question, index) => {
+                    const lecturerAnswer =
+                        question.answer?.trim() ||
+                        "No lecturer answer was provided.";
+
+                    return `
+Question ${index + 1}:
+${question.question}
+
+Lecturer answer:
+${lecturerAnswer}
+
+Status:
+${question.status || "Pending"}
+
+Pinned:
+${question.pinned ? "Yes" : "No"}
+          `.trim();
+                })
+                .join("\n\n");
+
+            const prompt = `
+You are creating evidence-based teaching recommendations for a university lecturer.
+
+Session title: ${session.title}
+Subject: ${session.subjectName}
+Subject code: ${session.moduleCode}
+Session status: ${session.status}
+
+Question clusters:
+${clusterContext}
+
+Session summary:
+${summaryContext}
+
+Engagement and learning-signal evidence:
+${engagementContext}
+
+Anonymous student questions and lecturer answers:
+${questionContext}
+
+Instructions:
+
+1. Base every recommendation only on the supplied session evidence.
+2. Do not invent lecture content, student behaviour, learning outcomes or explanations.
+3. Select one priority topic that most clearly requires lecturer attention.
+4. Provide one immediate suggested next action.
+5. Generate between three and six structured recommendations.
+6. Each recommendation must contain:
+   - a concise title;
+   - an allowed category;
+   - Low, Medium or High priority;
+   - a rationale;
+   - specific supporting evidence from the supplied session;
+   - a concrete lecturer action.
+7. Prioritise unresolved questions, repeated confusion, low participation and low response coverage when supported by the evidence.
+8. Create a concise next-session plan grounded in the supplied evidence.
+9. Create follow-up questions that the lecturer can ask to check understanding.
+10. Do not include student names, IDs or assumptions about individual students.
+11. Do not diagnose emotions, ability, motivation or mental state.
+12. Do not recommend punitive actions against students.
+13. Return only JSON matching the required schema.
+
+Allowed categories:
+- Concept Clarification
+- Student Engagement
+- Question Response
+- Assessment
+- Revision Support
+- Teaching Strategy
+- Other
+      `.trim();
+
+            const responseJsonSchema = {
+                type: "object",
+
+                properties: {
+                    priorityTopic: {
+                        type: "string",
+                    },
+
+                    suggestedNextAction: {
+                        type: "string",
+                    },
+
+                    recommendations: {
+                        type: "array",
+
+                        items: {
+                            type: "object",
+
+                            properties: {
+                                title: {
+                                    type: "string",
+                                },
+
+                                category: {
+                                    type: "string",
+
+                                    enum: [
+                                        "Concept Clarification",
+                                        "Student Engagement",
+                                        "Question Response",
+                                        "Assessment",
+                                        "Revision Support",
+                                        "Teaching Strategy",
+                                        "Other",
+                                    ],
+                                },
+
+                                priority: {
+                                    type: "string",
+
+                                    enum: [
+                                        "Low",
+                                        "Medium",
+                                        "High",
+                                    ],
+                                },
+
+                                rationale: {
+                                    type: "string",
+                                },
+
+                                evidence: {
+                                    type: "string",
+                                },
+
+                                action: {
+                                    type: "string",
+                                },
+                            },
+
+                            required: [
+                                "title",
+                                "category",
+                                "priority",
+                                "rationale",
+                                "evidence",
+                                "action",
+                            ],
+                        },
+                    },
+
+                    nextSessionPlan: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+
+                    followUpQuestions: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                    },
+                },
+
+                required: [
+                    "priorityTopic",
+                    "suggestedNextAction",
+                    "recommendations",
+                    "nextSessionPlan",
+                    "followUpQuestions",
+                ],
+            };
+
+            const generatedResult =
+                await generateStructuredContent({
+                    prompt,
+                    responseJsonSchema,
+                });
+
+            const cleanedRecommendations =
+                cleanTeachingRecommendations(
+                    generatedResult.recommendations
+                );
+
+            if (
+                !generatedResult.priorityTopic?.trim() ||
+                !generatedResult
+                    .suggestedNextAction?.trim() ||
+                cleanedRecommendations.length === 0
+            ) {
+                throw new Error(
+                    "Gemini returned incomplete teaching recommendations"
+                );
+            }
+
+            const generatedAt = new Date();
+
+            const savedAnalysis =
+                await SessionAIAnalysis.findOneAndUpdate(
+                    {
+                        sessionId: session._id,
+                    },
+                    {
+                        $set: {
+                            sessionCode:
+                                session.sessionCode,
+
+                            lecturerId:
+                                session.lecturerId,
+
+                            "teachingRecommendations.status":
+                                "completed",
+
+                            "teachingRecommendations.priorityTopic":
+                                generatedResult
+                                    .priorityTopic
+                                    .trim(),
+
+                            "teachingRecommendations.suggestedNextAction":
+                                generatedResult
+                                    .suggestedNextAction
+                                    .trim(),
+
+                            "teachingRecommendations.recommendations":
+                                cleanedRecommendations,
+
+                            "teachingRecommendations.nextSessionPlan":
+                                cleanEngagementStringArray(
+                                    generatedResult
+                                        .nextSessionPlan
+                                ),
+
+                            "teachingRecommendations.followUpQuestions":
+                                cleanEngagementStringArray(
+                                    generatedResult
+                                        .followUpQuestions
+                                ),
+
+                            "teachingRecommendations.contentFingerprint":
+                                contentFingerprint,
+
+                            "teachingRecommendations.generatedAt":
+                                generatedAt,
+
+                            "teachingRecommendations.errorMessage":
+                                "",
+
+                            "metadata.provider":
+                                "Google Gemini",
+
+                            "metadata.model":
+                                getGeminiModel(),
+
+                            "metadata.lastGeneratedAt":
+                                generatedAt,
+                        },
+                    },
+                    {
+                        returnDocument: "after",
+                    }
+                );
+
+            return res.status(200).json({
+                success: true,
+                message:
+                    "AI teaching recommendations generated successfully",
+                cached: false,
+                teachingRecommendations:
+                    savedAnalysis
+                        .teachingRecommendations,
+                metadata: savedAnalysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Generate teaching recommendations error:",
+                error
+            );
+
+            if (session?._id) {
+                try {
+                    await SessionAIAnalysis.findOneAndUpdate(
+                        {
+                            sessionId: session._id,
+                        },
+                        {
+                            $set: {
+                                "teachingRecommendations.status":
+                                    "failed",
+
+                                "teachingRecommendations.errorMessage":
+                                    error.message ||
+                                    "Teaching recommendation generation failed",
+                            },
+                        },
+                        {
+                            returnDocument: "after",
+                        }
+                    );
+                } catch (saveError) {
+                    console.error(
+                        "Save teaching recommendation failure error:",
+                        saveError
+                    );
+                }
+            }
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    error.message ||
+                    "Unable to generate teaching recommendations",
+            });
+        }
+    }
+);
+
+/*
+  Load saved AI teaching recommendations for the
+  lecturer who owns the selected session.
+*/
+
+router.get(
+    "/ai/sessions/:sessionId/teaching-recommendations",
+    async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const { lecturerId } = req.query;
+
+            const session = await findLecturerSession({
+                sessionId,
+                lecturerId,
+            });
+
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message:
+                        "Session not found or you are not authorised to view its teaching recommendations",
+                });
+            }
+
+            const analysis =
+                await SessionAIAnalysis.findOne({
+                    sessionId: session._id,
+                }).select(
+                    "teachingRecommendations metadata"
+                );
+
+            if (
+                !analysis ||
+                analysis.teachingRecommendations
+                    .status === "not_generated"
+            ) {
+                return res.status(404).json({
+                    success: false,
+                    status: "not_generated",
+                    message:
+                        "Teaching recommendations have not been generated for this session",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+
+                session: {
+                    _id: session._id,
+                    title: session.title,
+                    moduleCode: session.moduleCode,
+                    subjectName: session.subjectName,
+                    sessionCode: session.sessionCode,
+                    lecturerName: session.lecturerName,
+                    status: session.status,
+                },
+
+                teachingRecommendations:
+                    analysis.teachingRecommendations,
+
+                metadata: analysis.metadata,
+            });
+        } catch (error) {
+            console.error(
+                "Get teaching recommendations error:",
+                error
+            );
+
+            if (error.name === "CastError") {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Invalid session or lecturer information",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Unable to load teaching recommendations",
+            });
+        }
+    }
+);
 
 router.get(
     "/ai/student/sessions/:sessionId/published-summary",

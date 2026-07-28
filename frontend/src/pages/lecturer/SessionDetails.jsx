@@ -12,6 +12,7 @@ function SessionDetails({
   onViewAnalytics,
   onViewSummary,
   onViewEngagement,
+  onViewTeachingRecommendations,
   onEndSession,
 }) {
   const [endingSession, setEndingSession] =
@@ -72,11 +73,10 @@ function SessionDetails({
         </div>
 
         <span
-          className={`details-status ${
-            sessionEnded
+          className={`details-status ${sessionEnded
               ? "details-status-ended"
               : "details-status-active"
-          }`}
+            }`}
         >
           {session.status}
         </span>
@@ -199,6 +199,14 @@ function SessionDetails({
           onClick={onViewEngagement}
         >
           Engagement Analysis
+        </button>
+
+        <button
+          type="button"
+          className="details-teaching-btn"
+          onClick={onViewTeachingRecommendations}
+        >
+          Teaching Recommendations
         </button>
 
         <button
