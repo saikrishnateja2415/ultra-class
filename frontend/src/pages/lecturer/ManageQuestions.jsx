@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import axios from "axios";
+import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
 import "./ManageQuestions.css";
 
@@ -171,6 +172,19 @@ function ManageQuestions({ session, onBack }) {
 
       setExpandedClusters({});
 
+      if (!response.data.cached) {
+        recordEvaluationEvent({
+          actorId: lecturerId,
+          eventType: "ai_analysis_generated",
+          sessionId: session._id,
+
+          metrics: {
+            questionCount: questions.length,
+            success: true,
+          },
+        });
+      }
+
       setClusterMessage(
         response.data.cached
           ? "Saved AI clusters loaded because the questions have not changed."
@@ -285,6 +299,17 @@ function ManageQuestions({ session, onBack }) {
           answer: answers[id].trim(),
         }
       );
+
+      recordEvaluationEvent({
+        actorId: lecturerId,
+        eventType: "question_answered",
+        sessionId: session._id,
+
+        metrics: {
+          answeredCount: 1,
+          success: true,
+        },
+      });
 
       setAnswers((currentAnswers) => ({
         ...currentAnswers,

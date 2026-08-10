@@ -6,7 +6,9 @@ const {
   getStaffById,
   updateStaff,
   deleteStaff,
-} = require("../controllers/staffController");
+} = require(
+  "../controllers/staffController"
+);
 
 const {
   getLecturerSettings,
@@ -16,32 +18,75 @@ const {
   "../controllers/lecturerSettingsController"
 );
 
+const {
+  adminOnly,
+  lecturerSelfOnly,
+} = require(
+  "../middleware/authMiddleware"
+);
+
 const router = express.Router();
 
+/*
+  Lecturer Settings
+
+  A lecturer can access and update only their own
+  profile and password.
+*/
 
 router.get(
   "/lecturer/settings/:userId",
+  ...lecturerSelfOnly,
   getLecturerSettings
 );
 
 router.put(
   "/lecturer/settings/:userId/profile",
+  ...lecturerSelfOnly,
   updateLecturerProfile
 );
 
 router.put(
   "/lecturer/settings/:userId/password",
+  ...lecturerSelfOnly,
   changeLecturerPassword
 );
 
-router.post("/staff", createStaff);
+/*
+  Admin staff management
 
-router.get("/staff", getAllStaff);
+  Only an authenticated administrator can create,
+  view, edit or delete lecturer accounts.
+*/
 
-router.get("/staff/:id", getStaffById);
+router.post(
+  "/staff",
+  ...adminOnly,
+  createStaff
+);
 
-router.put("/staff/:id", updateStaff);
+router.get(
+  "/staff",
+  ...adminOnly,
+  getAllStaff
+);
 
-router.delete("/staff/:id", deleteStaff);
+router.get(
+  "/staff/:id",
+  ...adminOnly,
+  getStaffById
+);
+
+router.put(
+  "/staff/:id",
+  ...adminOnly,
+  updateStaff
+);
+
+router.delete(
+  "/staff/:id",
+  ...adminOnly,
+  deleteStaff
+);
 
 module.exports = router;

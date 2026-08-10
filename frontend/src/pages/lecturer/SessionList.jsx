@@ -3,6 +3,12 @@ import QRCode from "react-qr-code";
 
 import "./SessionList.css";
 
+const APP_URL =
+  import.meta.env.VITE_APP_URL ||
+  window.location.origin;
+
+
+
 function SessionList({
   sessions,
   onSelectSession,
@@ -41,8 +47,7 @@ function SessionList({
       const courseSearchText = sessionCourses
         .map(
           (course) =>
-            `${course?.courseName || ""} ${
-              course?.courseCode || ""
+            `${course?.courseName || ""} ${course?.courseCode || ""
             }`
         )
         .join(" ");
@@ -219,11 +224,10 @@ function SessionList({
                   </div>
 
                   <span
-                    className={`session-card-status ${
-                      session.status === "active"
+                    className={`session-card-status ${session.status === "active"
                         ? "session-status-active"
                         : "session-status-ended"
-                    }`}
+                      }`}
                   >
                     {session.status}
                   </span>
@@ -259,8 +263,9 @@ function SessionList({
                 <div className="session-card-bottom">
                   <div className="session-list-qr">
                     <QRCode
-                      value={`http://localhost:5173/join/${session.sessionCode}`}
-                      size={82}
+                      value={`${APP_URL}/?sessionCode=${encodeURIComponent(
+                        session.sessionCode
+                      )}`}
                     />
                   </div>
 

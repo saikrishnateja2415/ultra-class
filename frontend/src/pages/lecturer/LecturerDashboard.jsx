@@ -1,18 +1,29 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import axios from "axios";
 
 import Header from "../../components/Header";
 import SessionDetails from "./SessionDetails";
 import ManageQuestions from "./ManageQuestions";
+import LecturerMCQ from "./LecturerMCQ";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SessionSummary from "./SessionSummary";
 import EngagementAnalysis from "./EngagementAnalysis";
 import TeachingRecommendations from "./TeachingRecommendations";
-import Attendance from "./Attendance";
+//import Attendance from "./Attendance";
 import CreateSession from "./CreateSession";
 import SessionParticipants from "./SessionParticipants";
 import SessionList from "./SessionList";
 import LecturerSettings from "./LecturerSettings";
+import EvaluationData from "./EvaluationData";
+
+import {
+  recordEvaluationEvent,
+} from "../../services/evaluationLogger";
 
 import "./LecturerDashboard.css";
 
@@ -21,6 +32,7 @@ function LecturerDashboard({ user, logout }) {
     useState("dashboard");
 
   const [sessions, setSessions] = useState([]);
+
   const [allQuestions, setAllQuestions] =
     useState([]);
 
@@ -30,113 +42,157 @@ function LecturerDashboard({ user, logout }) {
   const [loadingSessions, setLoadingSessions] =
     useState(true);
 
-  const fetchAllQuestions = async (
-    lecturerSessions
-  ) => {
-    try {
-      const questionRequests =
-        lecturerSessions.map(async (session) => {
-          try {
-            const response = await axios.get(
-              `http://localhost:5000/questions/${session._id}`
-            );
+  /*
+    Load questions belonging to every session created
+    by the logged-in lecturer.
+  */
 
-            return (
-              response.data.questions || []
-            ).map((question) => ({
-              ...question,
+  const fetchAllQuestions = useCallback(
+    async (lecturerSessions) => {
+      try {
+        const questionRequests =
+          lecturerSessions.map(
+            async (session) => {
+              try {
+                const response = await axios.get(
+                  `http://localhost:5000/questions/${session._id}`
+                );
 
-              sessionTitle: session.title,
-              moduleCode: session.moduleCode,
-              sessionCode: session.sessionCode,
+                return (
+                  response.data.questions || []
+                ).map((question) => ({
+                  ...question,
 
-              sessionId:
-                question.sessionId || session._id,
-            }));
-          } catch (requestError) {
-            console.error(
-              `Questions could not be loaded for ${session.title}:`,
-              requestError
-            );
+                  sessionTitle: session.title,
+                  moduleCode: session.moduleCode,
+                  sessionCode:
+                    session.sessionCode,
 
-            return [];
-          }
-        });
+                  sessionId:
+                    question.sessionId ||
+                    session._id,
+                }));
+              } catch (requestError) {
+                console.error(
+                  `Questions could not be loaded for ${session.title}:`,
+                  requestError
+                );
 
-      const questionGroups =
-        await Promise.all(questionRequests);
+                return [];
+              }
+            }
+          );
 
-      const questionData = questionGroups.flat();
+        const questionGroups =
+          await Promise.all(questionRequests);
 
-      setAllQuestions(questionData);
-    } catch (error) {
-      console.error(
-        "Load lecturer questions error:",
-        error
-      );
+        const questionData =
+          questionGroups.flat();
 
-      setAllQuestions([]);
-    }
-  };
+        setAllQuestions(questionData);
+      } catch (error) {
+        console.error(
+          "Load lecturer questions error:",
+          error
+        );
 
-  const fetchSessions = async () => {
-    try {
-      const lecturerId = user?.id || user?._id;
-
-      if (!lecturerId) {
-        return;
+        setAllQuestions([]);
       }
+    },
+    []
+  );
 
-      setLoadingSessions(true);
+  /*
+    Load all sessions belonging to the logged-in
+    lecturer.
+  */
 
-      const response = await axios.get(
-        `http://localhost:5000/lecturer/sessions/${lecturerId}`
-      );
+  const fetchSessions = useCallback(
+    async () => {
+      try {
+        const lecturerId =
+          user?.id || user?._id;
 
-      const lecturerSessions =
-        response.data.sessions || [];
-
-      setSessions(lecturerSessions);
-
-      /*
-        If a session is currently selected, refresh
-        it using the latest server data.
-      */
-
-      setSelectedSession((currentSession) => {
-        if (!currentSession) {
-          return null;
+        if (!lecturerId) {
+          setSessions([]);
+          setAllQuestions([]);
+          setLoadingSessions(false);
+          return;
         }
 
-        return (
-          lecturerSessions.find(
-            (session) =>
-              session._id === currentSession._id
-          ) || currentSession
+        setLoadingSessions(true);
+
+        const response = await axios.get(
+          `http://localhost:5000/lecturer/sessions/${lecturerId}`
         );
-      });
 
-      await fetchAllQuestions(lecturerSessions);
-    } catch (error) {
-      console.error(
-        "Load lecturer sessions error:",
-        error
-      );
+        const lecturerSessions =
+          response.data.sessions || [];
 
-      alert(
-        error.response?.data?.message ||
-        "Error loading sessions"
-      );
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
+        setSessions(lecturerSessions);
+
+        /*
+          If a session is currently selected, refresh
+          it using the latest server information.
+        */
+
+        setSelectedSession(
+          (currentSession) => {
+            if (!currentSession) {
+              return null;
+            }
+
+            return (
+              lecturerSessions.find(
+                (session) =>
+                  session._id ===
+                  currentSession._id
+              ) || currentSession
+            );
+          }
+        );
+
+        await fetchAllQuestions(
+          lecturerSessions
+        );
+      } catch (error) {
+        console.error(
+          "Load lecturer sessions error:",
+          error
+        );
+
+        setSessions([]);
+        setAllQuestions([]);
+
+        alert(
+          error.response?.data?.message ||
+            "Error loading sessions"
+        );
+      } finally {
+        setLoadingSessions(false);
+      }
+    },
+    [
+      user?.id,
+      user?._id,
+      fetchAllQuestions,
+    ]
+  );
+
+  /*
+    Load sessions when the lecturer account becomes
+    available.
+  */
 
   useEffect(() => {
     if (user?.id || user?._id) {
       fetchSessions();
     }
-  }, [user?.id, user?._id]);
+  }, [
+    user?.id,
+    user?._id,
+    fetchSessions,
+  ]);
 
   const deleteSession = async (sessionId) => {
     const confirmed = window.confirm(
@@ -159,21 +215,27 @@ function LecturerDashboard({ user, logout }) {
 
       alert("Session deleted successfully");
     } catch (error) {
-      console.error("Delete session error:", error);
+      console.error(
+        "Delete session error:",
+        error
+      );
 
       alert(
         error.response?.data?.message ||
-        "Error deleting session"
+          "Error deleting session"
       );
     }
   };
 
   const endSession = async (sessionId) => {
     try {
-      const lecturerId = user?.id || user?._id;
+      const lecturerId =
+        user?.id || user?._id;
 
       if (!lecturerId) {
-        alert("Lecturer account is unavailable");
+        alert(
+          "Lecturer account is unavailable"
+        );
         return;
       }
 
@@ -185,33 +247,48 @@ function LecturerDashboard({ user, logout }) {
       );
 
       /*
-        Update the selected session immediately.
+        SessionSummary records its own successful end
+        action. Other session-ending entry points are
+        logged here.
       */
 
-      setSelectedSession((currentSession) => {
-        if (!currentSession) {
-          return currentSession;
+      if (activeTab !== "summary") {
+        recordEvaluationEvent({
+          actorId: lecturerId,
+          eventType: "session_ended",
+          sessionId,
+
+          metrics: {
+            success: true,
+          },
+        });
+      }
+
+      setSelectedSession(
+        (currentSession) => {
+          if (!currentSession) {
+            return currentSession;
+          }
+
+          return {
+            ...currentSession,
+            ...response.data.session,
+          };
         }
-
-        return {
-          ...currentSession,
-          ...response.data.session,
-        };
-      });
-
-      /*
-        Refresh dashboard statistics and lists.
-      */
+      );
 
       await fetchSessions();
 
       alert("Session ended successfully");
     } catch (error) {
-      console.error("End session error:", error);
+      console.error(
+        "End session error:",
+        error
+      );
 
       alert(
         error.response?.data?.message ||
-        "Unable to end the session"
+          "Unable to end the session"
       );
 
       throw error;
@@ -228,25 +305,27 @@ function LecturerDashboard({ user, logout }) {
   const totalSessions = sessions.length;
 
   const activeSessions = sessions.filter(
-    (session) => session.status === "active"
+    (session) =>
+      session.status === "active"
   ).length;
 
   const completedSessions = sessions.filter(
-    (session) => session.status === "ended"
+    (session) =>
+      session.status === "ended"
   ).length;
 
   const totalQuestions = allQuestions.length;
 
-  const answeredQuestions = allQuestions.filter(
-    isAnswered
-  ).length;
+  const answeredQuestions =
+    allQuestions.filter(isAnswered).length;
 
   const pendingQuestions =
     totalQuestions - answeredQuestions;
 
-  const pinnedQuestions = allQuestions.filter(
-    (question) => question.pinned
-  ).length;
+  const pinnedQuestions =
+    allQuestions.filter(
+      (question) => question.pinned
+    ).length;
 
   const totalStudentJoins = sessions.reduce(
     (total, session) =>
@@ -261,15 +340,19 @@ function LecturerDashboard({ user, logout }) {
     totalQuestions === 0
       ? 0
       : Math.round(
-        (answeredQuestions / totalQuestions) * 100
-      );
+          (answeredQuestions /
+            totalQuestions) *
+            100
+        );
 
   const pendingRate =
     totalQuestions === 0
       ? 0
       : Math.round(
-        (pendingQuestions / totalQuestions) * 100
-      );
+          (pendingQuestions /
+            totalQuestions) *
+            100
+        );
 
   /*
     This is an overall dashboard indicator only.
@@ -280,48 +363,51 @@ function LecturerDashboard({ user, logout }) {
     totalSessions === 0
       ? 0
       : Math.min(
-        100,
-        Math.round(
-          (totalQuestions * 4 +
-            answeredQuestions * 3 +
-            totalStudentJoins * 2) /
-          totalSessions
-        )
-      );
+          100,
+          Math.round(
+            (totalQuestions * 4 +
+              answeredQuestions * 3 +
+              totalStudentJoins * 2) /
+              totalSessions
+          )
+        );
 
-  const recentSessions = sessions.slice(0, 3);
+  const recentSessions =
+    sessions.slice(0, 3);
 
-  const sessionsWithQuestionCounts = sessions.map(
-    (session) => ({
+  const sessionsWithQuestionCounts =
+    sessions.map((session) => ({
       ...session,
 
       questionCount: allQuestions.filter(
         (question) => {
           const questionSessionId =
-            typeof question.sessionId === "object"
+            typeof question.sessionId ===
+            "object"
               ? question.sessionId?._id
               : question.sessionId;
 
           return (
             questionSessionId?.toString() ===
-            session._id?.toString() ||
+              session._id?.toString() ||
             question.sessionCode ===
-            session.sessionCode
+              session.sessionCode
           );
         }
       ).length,
-    })
-  );
+    }));
 
   const mostActiveSession =
     sessionsWithQuestionCounts.length === 0
       ? null
       : [...sessionsWithQuestionCounts].sort(
-        (firstSession, secondSession) =>
-          secondSession.questionCount -
-          firstSession.questionCount
-      )[0];
-
+          (
+            firstSession,
+            secondSession
+          ) =>
+            secondSession.questionCount -
+            firstSession.questionCount
+        )[0];
 
   const openSessions = () => {
     setSelectedSession(null);
@@ -344,6 +430,7 @@ function LecturerDashboard({ user, logout }) {
   const sessionsNavigationActive = [
     "sessions",
     "questions",
+    "mcq",
     "analytics",
     "summary",
     "engagement",
@@ -352,11 +439,15 @@ function LecturerDashboard({ user, logout }) {
 
   return (
     <div className="lecturer-page">
-      <Header user={user} logout={logout} />
+      <Header
+        user={user}
+        logout={logout}
+      />
 
       <div className="lecturer-shell">
         <aside className="lecturer-sidebar">
           <button
+            type="button"
             className={
               activeTab === "dashboard"
                 ? "nav-active"
@@ -371,6 +462,7 @@ function LecturerDashboard({ user, logout }) {
           </button>
 
           <button
+            type="button"
             className={
               sessionsNavigationActive
                 ? "nav-active"
@@ -382,6 +474,7 @@ function LecturerDashboard({ user, logout }) {
           </button>
 
           <button
+            type="button"
             className={
               activeTab === "create"
                 ? "nav-active"
@@ -396,6 +489,7 @@ function LecturerDashboard({ user, logout }) {
           </button>
 
           <button
+            type="button"
             className={
               activeTab === "participants"
                 ? "nav-active"
@@ -409,21 +503,24 @@ function LecturerDashboard({ user, logout }) {
             Participants
           </button>
 
+
           <button
+            type="button"
             className={
-              activeTab === "attendance"
+              activeTab === "evaluation"
                 ? "nav-active"
                 : ""
             }
             onClick={() => {
-              setActiveTab("attendance");
+              setActiveTab("evaluation");
               setSelectedSession(null);
             }}
           >
-            Attendance
+            Evaluation Data
           </button>
 
           <button
+            type="button"
             className={
               activeTab === "settings"
                 ? "nav-active"
@@ -439,8 +536,6 @@ function LecturerDashboard({ user, logout }) {
         </aside>
 
         <main className="lecturer-content">
-          {/* DASHBOARD */}
-
           {activeTab === "dashboard" && (
             <>
               <div className="welcome-card">
@@ -449,31 +544,40 @@ function LecturerDashboard({ user, logout }) {
                 </h1>
 
                 <p>
-                  Manage sessions, student questions,
-                  classroom activity and engagement
-                  analytics.
+                  Manage sessions, student
+                  questions, classroom activity
+                  and engagement analytics.
                 </p>
               </div>
 
               {loadingSessions ? (
                 <section className="main-card">
-                  <h2>Loading dashboard...</h2>
+                  <h2>
+                    Loading dashboard...
+                  </h2>
                 </section>
               ) : (
                 <>
                   <div className="stats-grid analytics-stats-grid">
                     <div className="stat-card">
                       <h3>Total Sessions</h3>
-                      <strong>{totalSessions}</strong>
+                      <strong>
+                        {totalSessions}
+                      </strong>
                     </div>
 
                     <div className="stat-card">
                       <h3>Active Sessions</h3>
-                      <strong>{activeSessions}</strong>
+                      <strong>
+                        {activeSessions}
+                      </strong>
                     </div>
 
                     <div className="stat-card">
-                      <h3>Completed Sessions</h3>
+                      <h3>
+                        Completed Sessions
+                      </h3>
+
                       <strong>
                         {completedSessions}
                       </strong>
@@ -481,6 +585,7 @@ function LecturerDashboard({ user, logout }) {
 
                     <div className="stat-card">
                       <h3>Student Joins</h3>
+
                       <strong>
                         {totalStudentJoins}
                       </strong>
@@ -488,11 +593,15 @@ function LecturerDashboard({ user, logout }) {
 
                     <div className="stat-card">
                       <h3>Total Questions</h3>
-                      <strong>{totalQuestions}</strong>
+
+                      <strong>
+                        {totalQuestions}
+                      </strong>
                     </div>
 
                     <div className="stat-card">
                       <h3>Answered</h3>
+
                       <strong>
                         {answeredQuestions}
                       </strong>
@@ -500,6 +609,7 @@ function LecturerDashboard({ user, logout }) {
 
                     <div className="stat-card">
                       <h3>Pending</h3>
+
                       <strong>
                         {pendingQuestions}
                       </strong>
@@ -507,6 +617,7 @@ function LecturerDashboard({ user, logout }) {
 
                     <div className="stat-card">
                       <h3>Pinned</h3>
+
                       <strong>
                         {pinnedQuestions}
                       </strong>
@@ -526,7 +637,9 @@ function LecturerDashboard({ user, logout }) {
                   <div className="dashboard-two-column">
                     <section className="dashboard-panel">
                       <div className="panel-header">
-                        <h2>Recent Sessions</h2>
+                        <h2>
+                          Recent Sessions
+                        </h2>
 
                         <button
                           type="button"
@@ -536,7 +649,8 @@ function LecturerDashboard({ user, logout }) {
                         </button>
                       </div>
 
-                      {recentSessions.length === 0 ? (
+                      {recentSessions.length ===
+                      0 ? (
                         <p>
                           No sessions created yet.
                         </p>
@@ -559,7 +673,9 @@ function LecturerDashboard({ user, logout }) {
                                 </h3>
 
                                 <p>
-                                  {session.moduleCode}
+                                  {
+                                    session.moduleCode
+                                  }
                                   {" • "}
                                   {
                                     session.sessionCode
@@ -585,12 +701,16 @@ function LecturerDashboard({ user, logout }) {
 
                       <div className="analytics-preview-box">
                         <p>Answer Rate</p>
-                        <h3>{answerRate}%</h3>
+                        <h3>
+                          {answerRate}%
+                        </h3>
                       </div>
 
                       <div className="analytics-preview-box">
                         <p>Pending Rate</p>
-                        <h3>{pendingRate}%</h3>
+                        <h3>
+                          {pendingRate}%
+                        </h3>
                       </div>
 
                       <div className="analytics-preview-box">
@@ -599,7 +719,8 @@ function LecturerDashboard({ user, logout }) {
                         </p>
 
                         <h3>
-                          {mostActiveSession?.title ||
+                          {mostActiveSession
+                            ?.title ||
                             "No data yet"}
                         </h3>
 
@@ -643,19 +764,17 @@ function LecturerDashboard({ user, logout }) {
             </>
           )}
 
-          {/* CREATE SESSION */}
-
           {activeTab === "create" && (
             <CreateSession
               user={user}
-              onSessionCreated={async () => {
-                await fetchSessions();
-              }}
+              onSessionCreated={
+                async () => {
+                  await fetchSessions();
+                }
+              }
               onOpenSessions={openSessions}
             />
           )}
-
-          {/* SESSION LIST */}
 
           {activeTab === "sessions" &&
             !selectedSession && (
@@ -671,8 +790,6 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
-          {/* SESSION DETAILS */}
-
           {activeTab === "sessions" &&
             selectedSession && (
               <SessionDetails
@@ -682,6 +799,9 @@ function LecturerDashboard({ user, logout }) {
                 onEndSession={endSession}
                 onManageQuestions={() => {
                   setActiveTab("questions");
+                }}
+                onManageMCQ={() => {
+                  setActiveTab("mcq");
                 }}
                 onViewParticipants={() => {
                   setActiveTab("participants");
@@ -701,8 +821,6 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
-          {/* SELECTED SESSION PARTICIPANTS */}
-
           {activeTab === "participants" &&
             selectedSession && (
               <SessionParticipants
@@ -713,12 +831,12 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
-          {/* PARTICIPANTS WITHOUT SESSION */}
-
           {activeTab === "participants" &&
             !selectedSession && (
               <section className="main-card">
-                <h2>Subject Participants</h2>
+                <h2>
+                  Subject Participants
+                </h2>
 
                 <p>
                   Select a session to view the
@@ -735,8 +853,6 @@ function LecturerDashboard({ user, logout }) {
               </section>
             )}
 
-          {/* QUESTION MANAGEMENT */}
-
           {activeTab === "questions" &&
             selectedSession && (
               <ManageQuestions
@@ -747,38 +863,47 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
-          {/* SESSION-SPECIFIC ANALYTICS */}
-
-          {/* AI SESSION SUMMARY */}
+          {activeTab === "mcq" &&
+            selectedSession && (
+              <LecturerMCQ
+                session={selectedSession}
+                user={user}
+                onBack={
+                  returnToSelectedSession
+                }
+              />
+            )}
 
           {activeTab === "summary" &&
             selectedSession && (
               <SessionSummary
                 session={selectedSession}
-                onBack={returnToSelectedSession}
+                onBack={
+                  returnToSelectedSession
+                }
                 onEndSession={endSession}
               />
             )}
-
-          {/* AI ENGAGEMENT AND LEARNING SIGNALS */}
 
           {activeTab === "engagement" &&
             selectedSession && (
               <EngagementAnalysis
                 session={selectedSession}
                 user={user}
-                onBack={returnToSelectedSession}
+                onBack={
+                  returnToSelectedSession
+                }
               />
             )}
-
-          {/* AI TEACHING RECOMMENDATIONS */}
 
           {activeTab === "teaching" &&
             selectedSession && (
               <TeachingRecommendations
                 session={selectedSession}
                 user={user}
-                onBack={returnToSelectedSession}
+                onBack={
+                  returnToSelectedSession
+                }
               />
             )}
 
@@ -793,16 +918,17 @@ function LecturerDashboard({ user, logout }) {
               />
             )}
 
-          {/* SAFETY MESSAGE */}
-
           {(activeTab === "questions" ||
+            activeTab === "mcq" ||
             activeTab === "analytics" ||
             activeTab === "summary" ||
             activeTab === "engagement" ||
             activeTab === "teaching") &&
             !selectedSession && (
               <section className="main-card">
-                <h2>No Session Selected</h2>
+                <h2>
+                  No Session Selected
+                </h2>
 
                 <p>
                   Select a session before opening
@@ -818,15 +944,13 @@ function LecturerDashboard({ user, logout }) {
               </section>
             )}
 
-          {/* ATTENDANCE */}
 
-          {activeTab === "attendance" && (
-            <Attendance />
+          {activeTab === "evaluation" && (
+            <EvaluationData
+              user={user}
+              sessions={sessions}
+            />
           )}
-
-          {/* SETTINGS */}
-
-          {/* LECTURER SETTINGS */}
 
           {activeTab === "settings" && (
             <LecturerSettings

@@ -5,9 +5,13 @@ const Staff = require("../models/Staff");
 const Student = require("../models/Student");
 const Subject = require("../models/Subject");
 const Course = require("../models/Course");
-const SessionAIAnalysis = require(
-  "../models/SessionAIAnalysis"
-);
+const SessionAIAnalysis = require("../models/SessionAIAnalysis");
+
+const {
+  lecturerOnly,
+  studentOnly,
+  requireSelf,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -20,8 +24,16 @@ function generateSessionCode() {
   return `UC-${randomCode}`;
 }
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: GET ASSIGNED SUBJECTS
+|--------------------------------------------------------------------------
+*/
+
 router.get(
   "/lecturer/:lecturerId/subjects",
+  ...lecturerOnly,
+  requireSelf("lecturerId"),
   async (req, res) => {
     try {
       const { lecturerId } = req.params;
@@ -42,17 +54,13 @@ router.get(
         _id: {
           $in: staff.subjects,
         },
-
         lecturers: staff._id,
         status: "active",
       })
         .select(
           "subjectName subjectCode department semester academicYear courses"
         )
-        .populate(
-          "courses",
-          "courseName courseCode"
-        )
+        .populate("courses", "courseName courseCode")
         .sort({
           subjectCode: 1,
         });
@@ -62,10 +70,7 @@ router.get(
         subjects,
       });
     } catch (error) {
-      console.error(
-        "Get lecturer subjects error:",
-        error
-      );
+      console.error("Get lecturer subjects error:", error);
 
       return res.status(500).json({
         success: false,
@@ -75,22 +80,26 @@ router.get(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: CREATE SESSION
+|--------------------------------------------------------------------------
+*/
+
 router.post(
   "/lecturer/sessions",
+  ...lecturerOnly,
   async (req, res) => {
     try {
-      const { title, subjectId, lecturerId } =
-        req.body;
+      const { title, subjectId } = req.body;
 
-      if (
-        !title?.trim() ||
-        !subjectId ||
-        !lecturerId
-      ) {
+      // Always use the authenticated lecturer ID.
+      const lecturerId = req.user.id;
+
+      if (!title?.trim() || !subjectId) {
         return res.status(400).json({
           success: false,
-          message:
-            "Subject and session title are required",
+          message: "Subject and session title are required",
         });
       }
 
@@ -115,8 +124,7 @@ router.post(
       if (!subject) {
         return res.status(403).json({
           success: false,
-          message:
-            "You are not assigned to the selected subject",
+          message: "You are not assigned to the selected subject",
         });
       }
 
@@ -150,16 +158,12 @@ router.post(
         session,
       });
     } catch (error) {
-      console.error(
-        "Create session error:",
-        error
-      );
+      console.error("Create session error:", error);
 
       if (error.name === "CastError") {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid lecturer or subject information",
+          message: "Invalid lecturer or subject information",
         });
       }
 
@@ -171,8 +175,16 @@ router.post(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: GET OWN SESSIONS
+|--------------------------------------------------------------------------
+*/
+
 router.get(
   "/lecturer/sessions/:lecturerId",
+  ...lecturerOnly,
+  requireSelf("lecturerId"),
   async (req, res) => {
     try {
       const sessions = await Session.find({
@@ -180,9 +192,7 @@ router.get(
       })
         .populate({
           path: "subjectId",
-
-          select:
-            "subjectName subjectCode",
+          select: "subjectName subjectCode",
         })
         .sort({
           createdAt: -1,
@@ -193,13 +203,6 @@ router.get(
         .map((session) => session.subjectId?._id)
         .filter(Boolean);
 
-      /*
-        Find courses using Course.subjects.
-
-        This supports older course–subject records
-        where Subject.courses might not be populated.
-      */
-
       const courses =
         subjectIds.length === 0
           ? []
@@ -208,62 +211,50 @@ router.get(
                 $in: subjectIds,
               },
             })
-              .select(
-                "courseName courseCode subjects status"
-              )
+              .select("courseName courseCode subjects status")
               .lean();
 
-      const sessionsWithCourses = sessions.map(
-        (session) => {
-          if (!session.subjectId?._id) {
-            return {
-              ...session,
-              participantCount:
-                session.participants?.length || 0,
-            };
-          }
-
-          const currentSubjectId =
-            session.subjectId._id.toString();
-
-          const matchingCourses = courses
-            .filter((course) =>
-              (course.subjects || []).some(
-                (courseSubjectId) =>
-                  courseSubjectId.toString() ===
-                  currentSubjectId
-              )
-            )
-            .map((course) => ({
-              _id: course._id,
-              courseName: course.courseName,
-              courseCode: course.courseCode,
-              status: course.status,
-            }));
-
+      const sessionsWithCourses = sessions.map((session) => {
+        if (!session.subjectId?._id) {
           return {
             ...session,
-
-            participantCount:
-              session.participants?.length || 0,
-
-            subjectId: {
-              ...session.subjectId,
-              courses: matchingCourses,
-            },
+            participantCount: session.participants?.length || 0,
           };
         }
-      );
+
+        const currentSubjectId =
+          session.subjectId._id.toString();
+
+        const matchingCourses = courses
+          .filter((course) =>
+            (course.subjects || []).some(
+              (courseSubjectId) =>
+                courseSubjectId.toString() === currentSubjectId
+            )
+          )
+          .map((course) => ({
+            _id: course._id,
+            courseName: course.courseName,
+            courseCode: course.courseCode,
+            status: course.status,
+          }));
+
+        return {
+          ...session,
+          participantCount: session.participants?.length || 0,
+          subjectId: {
+            ...session.subjectId,
+            courses: matchingCourses,
+          },
+        };
+      });
 
       return res.status(200).json({
         success: true,
         sessions: sessionsWithCourses,
       });
     } catch (error) {
-      console.error(
-        "Get lecturer sessions error:",
-        error
-      );
+      console.error("Get lecturer sessions error:", error);
 
       return res.status(500).json({
         success: false,
@@ -273,15 +264,20 @@ router.get(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: GET SESSION PARTICIPANTS
+|--------------------------------------------------------------------------
+*/
+
 router.get(
   "/lecturer/session/:sessionId/participants",
+  ...lecturerOnly,
   async (req, res) => {
     try {
       const { sessionId } = req.params;
 
-      const session = await Session.findById(
-        sessionId
-      );
+      const session = await Session.findById(sessionId);
 
       if (!session) {
         return res.status(404).json({
@@ -290,26 +286,29 @@ router.get(
         });
       }
 
-      if (!session.subjectId) {
-        return res.status(400).json({
+      // Prevent lecturers from viewing another lecturer's session.
+      if (
+        String(session.lecturerId) !== String(req.user.id)
+      ) {
+        return res.status(403).json({
           success: false,
           message:
-            "This session is not linked to a subject",
+            "You are not authorised to view this session's participants",
         });
       }
 
-      const subject = await Subject.findById(
-        session.subjectId
-      )
-        .select(
-          "subjectName subjectCode students"
-        )
+      if (!session.subjectId) {
+        return res.status(400).json({
+          success: false,
+          message: "This session is not linked to a subject",
+        });
+      }
+
+      const subject = await Subject.findById(session.subjectId)
+        .select("subjectName subjectCode students")
         .populate({
           path: "students",
-
-          select:
-            "studentId userId yearOfStudy status",
-
+          select: "studentId userId yearOfStudy status",
           populate: {
             path: "userId",
             select: "name email",
@@ -323,31 +322,17 @@ router.get(
         });
       }
 
-      /*
-        Build a map containing the Student profile ID
-        and their session join time.
-      */
-
       const joinedParticipantMap = new Map(
-        (session.participants || []).map(
-          (participant) => [
-            participant.studentId.toString(),
-            participant.joinedAt,
-          ]
-        )
+        (session.participants || []).map((participant) => [
+          participant.studentId.toString(),
+          participant.joinedAt,
+        ])
       );
-
-      /*
-        Return every active student registered for
-        the subject and identify whether they joined
-        this specific session.
-      */
 
       const participants = subject.students
         .filter(
           (student) =>
-            student &&
-            student.status === "active"
+            student && student.status === "active"
         )
         .map((student) => {
           const joinedAt =
@@ -357,38 +342,21 @@ router.get(
 
           return {
             _id: student._id,
-
             studentId:
-              student.studentId ||
-              "Not available",
-
+              student.studentId || "Not available",
             name:
-              student.userId?.name ||
-              "Name unavailable",
-
+              student.userId?.name || "Name unavailable",
             email:
-              student.userId?.email ||
-              "Email unavailable",
-
-            yearOfStudy:
-              student.yearOfStudy || 1,
-
+              student.userId?.email || "Email unavailable",
+            yearOfStudy: student.yearOfStudy || 1,
             status: student.status,
-
             joined: Boolean(joinedAt),
-
             joinedAt,
           };
         })
         .sort((firstStudent, secondStudent) => {
-          /*
-            Show joined students first, followed by
-            the remaining registered students.
-          */
-
           if (
-            firstStudent.joined !==
-            secondStudent.joined
+            firstStudent.joined !== secondStudent.joined
           ) {
             return firstStudent.joined ? -1 : 1;
           }
@@ -404,7 +372,6 @@ router.get(
 
       return res.status(200).json({
         success: true,
-
         session: {
           _id: session._id,
           title: session.title,
@@ -413,20 +380,14 @@ router.get(
           createdAt: session.createdAt,
           endedAt: session.endedAt,
         },
-
         subject: {
           _id: subject._id,
           subjectName: subject.subjectName,
           subjectCode: subject.subjectCode,
         },
-
         registeredCount: participants.length,
-
         joinedCount,
-
-        notJoinedCount:
-          participants.length - joinedCount,
-
+        notJoinedCount: participants.length - joinedCount,
         participants,
       });
     } catch (error) {
@@ -444,30 +405,27 @@ router.get(
 
       return res.status(500).json({
         success: false,
-        message:
-          "Error loading session participants",
+        message: "Error loading session participants",
       });
     }
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: END OWN SESSION
+|--------------------------------------------------------------------------
+*/
+
 router.put(
   "/lecturer/sessions/:sessionId/end",
+  ...lecturerOnly,
   async (req, res) => {
     try {
       const { sessionId } = req.params;
-      const { lecturerId } = req.body;
+      const lecturerId = req.user.id;
 
-      if (!lecturerId) {
-        return res.status(400).json({
-          success: false,
-          message: "Lecturer account is required",
-        });
-      }
-
-      const session = await Session.findById(
-        sessionId
-      );
+      const session = await Session.findById(sessionId);
 
       if (!session) {
         return res.status(404).json({
@@ -477,8 +435,7 @@ router.put(
       }
 
       if (
-        session.lecturerId.toString() !==
-        lecturerId.toString()
+        String(session.lecturerId) !== String(lecturerId)
       ) {
         return res.status(403).json({
           success: false,
@@ -490,8 +447,7 @@ router.put(
       if (session.status === "ended") {
         return res.status(400).json({
           success: false,
-          message:
-            "This session has already ended",
+          message: "This session has already ended",
         });
       }
 
@@ -506,10 +462,7 @@ router.put(
         session,
       });
     } catch (error) {
-      console.error(
-        "End session error:",
-        error
-      );
+      console.error("End session error:", error);
 
       if (error.name === "CastError") {
         return res.status(400).json({
@@ -526,19 +479,27 @@ router.put(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| LECTURER: DELETE OWN SESSION
+|--------------------------------------------------------------------------
+*/
+
 router.delete(
   "/delete-session/:id",
+  ...lecturerOnly,
   async (req, res) => {
     try {
-      const session =
-        await Session.findByIdAndDelete(
-          req.params.id
-        );
+      const session = await Session.findOneAndDelete({
+        _id: req.params.id,
+        lecturerId: req.user.id,
+      });
 
       if (!session) {
         return res.status(404).json({
           success: false,
-          message: "Session not found",
+          message:
+            "Session not found or you are not authorised to delete it",
         });
       }
 
@@ -547,10 +508,7 @@ router.delete(
         message: "Session deleted successfully",
       });
     } catch (error) {
-      console.error(
-        "Delete session error:",
-        error
-      );
+      console.error("Delete session error:", error);
 
       if (error.name === "CastError") {
         return res.status(400).json({
@@ -567,28 +525,50 @@ router.delete(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| STUDENT: CHECK JOINED SESSION STATUS
+|--------------------------------------------------------------------------
+*/
+
 router.get(
   "/student/session/:sessionId/status",
+  ...studentOnly,
   async (req, res) => {
     try {
       const { sessionId } = req.params;
 
-      const session = await Session.findById(
-        sessionId
-      ).select(
+      // Find the student using the authenticated token.
+      const student = await Student.findOne({
+        userId: req.user.id,
+        status: "active",
+      }).select("_id");
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Active student profile not found",
+        });
+      }
+
+      // Only return the session if this student joined it.
+      const session = await Session.findOne({
+        _id: sessionId,
+        "participants.studentId": student._id,
+      }).select(
         "title moduleCode subjectName sessionCode lecturerName status endedAt updatedAt"
       );
 
       if (!session) {
         return res.status(404).json({
           success: false,
-          message: "Session not found",
+          message:
+            "Session not found or you have not joined it",
         });
       }
 
       return res.status(200).json({
         success: true,
-
         session: {
           _id: session._id,
           title: session.title,
@@ -616,55 +596,54 @@ router.get(
 
       return res.status(500).json({
         success: false,
-        message:
-          "Error checking session status",
+        message: "Error checking session status",
       });
     }
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| STUDENT: JOIN SESSION
+|--------------------------------------------------------------------------
+*/
+
 router.post(
   "/student/join-session",
+  ...studentOnly,
   async (req, res) => {
     try {
-      const { sessionCode, studentId } = req.body;
+      const { sessionCode } = req.body;
 
-      if (!sessionCode?.trim() || !studentId) {
+      // Do not trust a student ID sent from the frontend.
+      // Always use the ID from the verified JWT token.
+      const studentId = req.user.id;
+
+      if (!sessionCode?.trim()) {
         return res.status(400).json({
           success: false,
-          message:
-            "Session code and student account are required",
+          message: "Session code is required",
         });
       }
 
       const session = await Session.findOne({
-        sessionCode: sessionCode
-          .trim()
-          .toUpperCase(),
-
+        sessionCode: sessionCode.trim().toUpperCase(),
         status: "active",
       });
 
       if (!session) {
         return res.status(404).json({
           success: false,
-          message:
-            "Session not found or inactive",
+          message: "Session not found or inactive",
         });
       }
 
       if (!session.subjectId) {
         return res.status(403).json({
           success: false,
-          message:
-            "This session is not linked to a subject",
+          message: "This session is not linked to a subject",
         });
       }
-
-      /*
-        studentId from the frontend is the User
-        account ID. Find its Student profile.
-      */
 
       const student = await Student.findOne({
         userId: studentId,
@@ -695,23 +674,18 @@ router.post(
         });
       }
 
-      const alreadyJoined =
-        (session.participants || []).some(
-          (participant) =>
-            participant.studentId.toString() ===
-            student._id.toString()
-        );
-
-      /*
-        Record the student only when they have not
-        previously joined this session.
-      */
+      const alreadyJoined = (
+        session.participants || []
+      ).some(
+        (participant) =>
+          participant.studentId.toString() ===
+          student._id.toString()
+      );
 
       if (!alreadyJoined) {
         await Session.updateOne(
           {
             _id: session._id,
-
             "participants.studentId": {
               $ne: student._id,
             },
@@ -727,28 +701,22 @@ router.post(
         );
       }
 
-      const updatedSession =
-        await Session.findById(session._id);
+      const updatedSession = await Session.findById(
+        session._id
+      );
 
       return res.status(200).json({
         success: true,
-
         message: alreadyJoined
           ? "You have already joined this session"
           : "Session joined successfully",
-
         alreadyJoined,
-
         participantCount:
           updatedSession.participants.length,
-
         session: updatedSession,
       });
     } catch (error) {
-      console.error(
-        "Join session error:",
-        error
-      );
+      console.error("Join session error:", error);
 
       if (error.name === "CastError") {
         return res.status(400).json({
@@ -766,43 +734,46 @@ router.post(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| STUDENT: GET OWN JOINED SESSIONS
+|--------------------------------------------------------------------------
+*/
 
 router.get(
   "/student/:studentId/joined-sessions",
+  ...studentOnly,
+  requireSelf("studentId"),
   async (req, res) => {
     try {
-      /*
-        studentId is the logged-in User account ID.
-      */
-
       const { studentId } = req.params;
 
       const student = await Student.findOne({
         userId: studentId,
         status: "active",
-      }).select("_id subjects status");
+      })
+        .select("_id subjects status")
+        .populate({
+          path: "subjects",
+          select: "subjectName subjectCode status",
+          match: {
+            status: "active",
+          },
+        });
 
       if (!student) {
         return res.status(404).json({
           success: false,
-          message:
-            "Active student profile not found",
+          message: "Active student profile not found",
         });
       }
 
-      /*
-        Session.participants stores Student profile
-        IDs, not User account IDs.
-      */
-
       const sessions = await Session.find({
-        "participants.studentId":
-          student._id,
+        "participants.studentId": student._id,
       })
         .populate({
           path: "subjectId",
-          select:
-            "subjectName subjectCode",
+          select: "subjectName subjectCode",
         })
         .sort({
           createdAt: -1,
@@ -813,11 +784,6 @@ router.get(
         (session) => session._id
       );
 
-      /*
-        Find sessions with a completed and published
-        summary. Private drafts are excluded.
-      */
-
       const publishedAnalyses =
         sessionIds.length === 0
           ? []
@@ -825,12 +791,8 @@ router.get(
               sessionId: {
                 $in: sessionIds,
               },
-
-              "sessionSummary.status":
-                "completed",
-
-              "sessionSummary.isPublished":
-                true,
+              "sessionSummary.status": "completed",
+              "sessionSummary.isPublished": true,
             })
               .select(
                 "sessionId sessionSummary.publishedAt"
@@ -840,22 +802,19 @@ router.get(
       const publishedSummaryMap = new Map(
         publishedAnalyses.map((analysis) => [
           analysis.sessionId.toString(),
-
-          analysis.sessionSummary
-            .publishedAt,
+          analysis.sessionSummary.publishedAt,
         ])
       );
 
       const formattedSessions = sessions.map(
         (session) => {
-          const participation =
-            (
-              session.participants || []
-            ).find(
-              (participant) =>
-                participant.studentId.toString() ===
-                student._id.toString()
-            );
+          const participation = (
+            session.participants || []
+          ).find(
+            (participant) =>
+              participant.studentId.toString() ===
+              student._id.toString()
+          );
 
           const publishedAt =
             publishedSummaryMap.get(
@@ -865,72 +824,48 @@ router.get(
           return {
             _id: session._id,
             title: session.title,
-
-            moduleCode:
-              session.moduleCode,
-
+            subjectId:
+              session.subjectId?._id ||
+              session.subjectId,
+            moduleCode: session.moduleCode,
             subjectName:
               session.subjectName ||
-              session.subjectId
-                ?.subjectName ||
+              session.subjectId?.subjectName ||
               "Subject unavailable",
-
-            sessionCode:
-              session.sessionCode,
-
-            lecturerName:
-              session.lecturerName,
-
+            sessionCode: session.sessionCode,
+            lecturerName: session.lecturerName,
             status: session.status,
-
-            createdAt:
-              session.createdAt,
-
-            endedAt:
-              session.endedAt,
-
-            joinedAt:
-              participation?.joinedAt ||
-              null,
-
+            createdAt: session.createdAt,
+            endedAt: session.endedAt,
+            joinedAt: participation?.joinedAt || null,
             summaryAvailable:
               session.status === "ended" &&
               Boolean(publishedAt),
-
-            summaryPublishedAt:
-              publishedAt,
+            summaryPublishedAt: publishedAt,
           };
         }
       );
 
-      const activeCount =
-        formattedSessions.filter(
-          (session) =>
-            session.status === "active"
-        ).length;
+      const activeCount = formattedSessions.filter(
+        (session) => session.status === "active"
+      ).length;
 
-      const endedCount =
-        formattedSessions.filter(
-          (session) =>
-            session.status === "ended"
-        ).length;
+      const endedCount = formattedSessions.filter(
+        (session) => session.status === "ended"
+      ).length;
 
       const summariesAvailable =
         formattedSessions.filter(
-          (session) =>
-            session.summaryAvailable
+          (session) => session.summaryAvailable
         ).length;
 
       return res.status(200).json({
         success: true,
-
-        totalSessions:
-          formattedSessions.length,
-
+        totalSessions: formattedSessions.length,
         activeCount,
         endedCount,
         summariesAvailable,
-
+        registeredSubjects: student.subjects || [],
         sessions: formattedSessions,
       });
     } catch (error) {
@@ -942,15 +877,13 @@ router.get(
       if (error.name === "CastError") {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid student information",
+          message: "Invalid student information",
         });
       }
 
       return res.status(500).json({
         success: false,
-        message:
-          "Unable to load joined sessions",
+        message: "Unable to load joined sessions",
       });
     }
   }

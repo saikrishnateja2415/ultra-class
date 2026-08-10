@@ -1,58 +1,122 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import "./StudentSessionSummary.css";
 
-function StudentSessionSummary({ session, user, onBack }) {
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+function StudentSessionSummary({
+  session,
+  user,
+  onBack,
+}) {
+  const [summary, setSummary] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
 
   const userId = user?.id || user?._id;
 
-  const fetchPublishedSummary = useCallback(async () => {
-    if (!session?._id || !userId) {
-      setError("Student or session information is unavailable.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await fetch(
-        `http://localhost:5000/ai/student/sessions/${
-          session._id
-        }/published-summary?studentId=${encodeURIComponent(userId)}`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to load the published AI summary."
+  const fetchPublishedSummary =
+    useCallback(async () => {
+      if (!session?._id || !userId) {
+        setError(
+          "Student or session information is unavailable."
         );
+
+        setLoading(false);
+        return;
       }
 
-      setSummary(data.summary || data);
-    } catch (fetchError) {
-      console.error("Get student session summary error:", fetchError);
+      try {
+        setLoading(true);
+        setError("");
 
-      setError(
-        fetchError.message ||
-          "Something went wrong while loading the session summary."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [session?._id, userId]);
+        const token =
+          localStorage.getItem("authToken");
+
+        if (!token) {
+          throw new Error(
+            "Your login session is unavailable. Please log in again."
+          );
+        }
+
+        /*
+          The backend obtains the student identity
+          securely from the JWT token.
+
+          Therefore, studentId is not sent as a query
+          parameter.
+        */
+
+        const response = await fetch(
+          `${API_URL}/ai/student/sessions/${session._id}/published-summary`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        let data;
+
+        try {
+          data = await response.json();
+        } catch {
+          data = {};
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Unable to load the published AI summary."
+          );
+        }
+
+        setSummary(data.summary || data);
+      } catch (fetchError) {
+        console.error(
+          "Get student session summary error:",
+          fetchError
+        );
+
+        setError(
+          fetchError.message ||
+            "Something went wrong while loading the session summary."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [session?._id, userId]);
 
   useEffect(() => {
     fetchPublishedSummary();
   }, [fetchPublishedSummary]);
 
-  const renderList = (items, emptyMessage) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return <p className="student-summary-empty-text">{emptyMessage}</p>;
+  const renderList = (
+    items,
+    emptyMessage
+  ) => {
+    if (
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
+      return (
+        <p className="student-summary-empty-text">
+          {emptyMessage}
+        </p>
+      );
     }
 
     return (
@@ -82,9 +146,16 @@ function StudentSessionSummary({ session, user, onBack }) {
         </button>
 
         <div className="student-summary-state">
-          <div className="student-summary-loader"></div>
-          <h2>Loading AI session summary...</h2>
-          <p>Retrieving the lecturer-approved revision material.</p>
+          <div className="student-summary-loader" />
+
+          <h2>
+            Loading AI session summary...
+          </h2>
+
+          <p>
+            Retrieving the lecturer-approved
+            revision material.
+          </p>
         </div>
       </section>
     );
@@ -102,8 +173,12 @@ function StudentSessionSummary({ session, user, onBack }) {
         </button>
 
         <div className="student-summary-state error">
-          <span className="student-summary-state-icon">!</span>
+          <span className="student-summary-state-icon">
+            !
+          </span>
+
           <h2>Summary unavailable</h2>
+
           <p>{error}</p>
 
           <button
@@ -118,18 +193,28 @@ function StudentSessionSummary({ session, user, onBack }) {
     );
   }
 
-  const sessionInformation = summary?.session || session;
-  const summaryContent = summary?.sessionSummary || summary;
+  const sessionInformation =
+    summary?.session || session;
+
+  const summaryContent =
+    summary?.sessionSummary || summary;
 
   const overview =
     summaryContent?.summary ||
     "The lecturer has not provided a general overview for this session.";
 
-  const keyTopics = summaryContent?.keyTopics || [];
-  const commonDifficulties = summaryContent?.commonDifficulties || [];
+  const keyTopics =
+    summaryContent?.keyTopics || [];
+
+  const commonDifficulties =
+    summaryContent?.commonDifficulties || [];
+
   const importantExplanations =
-    summaryContent?.importantExplanations || [];
-  const revisionPoints = summaryContent?.revisionPoints || [];
+    summaryContent?.importantExplanations ||
+    [];
+
+  const revisionPoints =
+    summaryContent?.revisionPoints || [];
 
   const publishedAt =
     summaryContent?.publishedAt ||
@@ -152,11 +237,15 @@ function StudentSessionSummary({ session, user, onBack }) {
             LECTURER-APPROVED AI SUMMARY
           </span>
 
-          <h1>{sessionInformation?.title || "Session Summary"}</h1>
+          <h1>
+            {sessionInformation?.title ||
+              "Session Summary"}
+          </h1>
 
           <p>
             {sessionInformation?.subjectName ||
-              sessionInformation?.subject?.subjectName ||
+              sessionInformation?.subject
+                ?.subjectName ||
               sessionInformation?.moduleName ||
               "Published classroom revision material"}
           </p>
@@ -164,9 +253,12 @@ function StudentSessionSummary({ session, user, onBack }) {
 
         <div className="student-summary-published-badge">
           <span>Published</span>
+
           <strong>
             {publishedAt
-              ? new Date(publishedAt).toLocaleDateString()
+              ? new Date(
+                  publishedAt
+                ).toLocaleDateString()
               : "Available"}
           </strong>
         </div>
@@ -175,22 +267,30 @@ function StudentSessionSummary({ session, user, onBack }) {
       <div className="student-summary-session-info">
         <div>
           <span>Subject Code</span>
+
           <strong>
             {sessionInformation?.moduleCode ||
-              sessionInformation?.subject?.subjectCode ||
+              sessionInformation?.subject
+                ?.subjectCode ||
               "Not available"}
           </strong>
         </div>
 
         <div>
           <span>Session Code</span>
-          <strong>{sessionInformation?.sessionCode || "Not available"}</strong>
+
+          <strong>
+            {sessionInformation?.sessionCode ||
+              "Not available"}
+          </strong>
         </div>
 
         <div>
           <span>Session Status</span>
+
           <strong className="student-summary-ended-status">
-            {sessionInformation?.status || "ended"}
+            {sessionInformation?.status ||
+              "ended"}
           </strong>
         </div>
       </div>
@@ -201,11 +301,17 @@ function StudentSessionSummary({ session, user, onBack }) {
 
           <div>
             <h2>Session Overview</h2>
-            <p>A concise explanation of what was discussed in this session.</p>
+
+            <p>
+              A concise explanation of what was
+              discussed in this session.
+            </p>
           </div>
         </div>
 
-        <p className="student-summary-overview-text">{overview}</p>
+        <p className="student-summary-overview-text">
+          {overview}
+        </p>
       </div>
 
       <div className="student-summary-grid">
@@ -215,11 +321,18 @@ function StudentSessionSummary({ session, user, onBack }) {
 
             <div>
               <h2>Key Topics</h2>
-              <p>Main concepts covered during the classroom session.</p>
+
+              <p>
+                Main concepts covered during the
+                classroom session.
+              </p>
             </div>
           </div>
 
-          {renderList(keyTopics, "No key topics were added.")}
+          {renderList(
+            keyTopics,
+            "No key topics were added."
+          )}
         </div>
 
         <div className="student-summary-content-card difficulties">
@@ -228,7 +341,11 @@ function StudentSessionSummary({ session, user, onBack }) {
 
             <div>
               <h2>Common Difficulties</h2>
-              <p>Areas where students needed additional clarification.</p>
+
+              <p>
+                Areas where students needed
+                additional clarification.
+              </p>
             </div>
           </div>
 
@@ -243,8 +360,14 @@ function StudentSessionSummary({ session, user, onBack }) {
             <span>04</span>
 
             <div>
-              <h2>Important Explanations</h2>
-              <p>Key points reviewed and approved by the lecturer.</p>
+              <h2>
+                Important Explanations
+              </h2>
+
+              <p>
+                Key points reviewed and approved
+                by the lecturer.
+              </p>
             </div>
           </div>
 
@@ -260,7 +383,11 @@ function StudentSessionSummary({ session, user, onBack }) {
 
             <div>
               <h2>Revision Points</h2>
-              <p>Recommended concepts to review after the session.</p>
+
+              <p>
+                Recommended concepts to review
+                after the session.
+              </p>
             </div>
           </div>
 
@@ -272,12 +399,16 @@ function StudentSessionSummary({ session, user, onBack }) {
       </div>
 
       <div className="student-summary-notice">
-        <strong>Approved learning material</strong>
+        <strong>
+          Approved learning material
+        </strong>
 
         <p>
-          This AI-generated summary was reviewed and published by your
-          lecturer. Use it as revision support alongside your lecture notes and
-          official course materials.
+          This AI-generated summary was reviewed
+          and published by your lecturer. Use it
+          as revision support alongside your
+          lecture notes and official course
+          materials.
         </p>
       </div>
     </section>

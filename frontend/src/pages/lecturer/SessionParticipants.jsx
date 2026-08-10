@@ -1,150 +1,192 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import axios from "axios";
 
 import "./SessionParticipants.css";
 
-function SessionParticipants({ session, onBack }) {
+function SessionParticipants({
+  session,
+  onBack,
+}) {
   const [participants, setParticipants] =
     useState([]);
 
   const [subject, setSubject] =
     useState(null);
 
-  const [registeredCount, setRegisteredCount] =
-    useState(0);
+  const [
+    registeredCount,
+    setRegisteredCount,
+  ] = useState(0);
 
   const [joinedCount, setJoinedCount] =
     useState(0);
 
-  const [notJoinedCount, setNotJoinedCount] =
-    useState(0);
+  const [
+    notJoinedCount,
+    setNotJoinedCount,
+  ] = useState(0);
 
   const [searchText, setSearchText] =
     useState("");
 
-  const [attendanceFilter, setAttendanceFilter] =
-    useState("all");
+  const [
+    attendanceFilter,
+    setAttendanceFilter,
+  ] = useState("all");
 
   const [loading, setLoading] =
     useState(true);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
-  const fetchParticipants = async () => {
-    if (!session?._id) {
-      setLoading(false);
+  const fetchParticipants = useCallback(
+    async () => {
+      if (!session?._id) {
+        setParticipants([]);
+        setSubject(null);
+        setRegisteredCount(0);
+        setJoinedCount(0);
+        setNotJoinedCount(0);
 
-      setErrorMessage(
-        "Session information is unavailable."
-      );
+        setErrorMessage(
+          "Session information is unavailable."
+        );
 
-      return;
-    }
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setErrorMessage("");
+      try {
+        setLoading(true);
+        setErrorMessage("");
 
-      const response = await axios.get(
-        `http://localhost:5000/lecturer/session/${session._id}/participants`
-      );
+        const response = await axios.get(
+          `http://localhost:5000/lecturer/session/${session._id}/participants`
+        );
 
-      setParticipants(
-        response.data.participants || []
-      );
+        setParticipants(
+          response.data.participants || []
+        );
 
-      setSubject(
-        response.data.subject || null
-      );
+        setSubject(
+          response.data.subject || null
+        );
 
-      setRegisteredCount(
-        response.data.registeredCount || 0
-      );
+        setRegisteredCount(
+          response.data.registeredCount || 0
+        );
 
-      setJoinedCount(
-        response.data.joinedCount || 0
-      );
+        setJoinedCount(
+          response.data.joinedCount || 0
+        );
 
-      setNotJoinedCount(
-        response.data.notJoinedCount || 0
-      );
-    } catch (error) {
-      console.log(
-        "Load session participants error:",
-        error
-      );
+        setNotJoinedCount(
+          response.data.notJoinedCount || 0
+        );
+      } catch (error) {
+        console.error(
+          "Load session participants error:",
+          error
+        );
 
-      setParticipants([]);
-      setSubject(null);
-      setRegisteredCount(0);
-      setJoinedCount(0);
-      setNotJoinedCount(0);
+        setParticipants([]);
+        setSubject(null);
+        setRegisteredCount(0);
+        setJoinedCount(0);
+        setNotJoinedCount(0);
 
-      setErrorMessage(
-        error.response?.data?.message ||
-          "Unable to load session participants."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        setErrorMessage(
+          error.response?.data?.message ||
+            "Unable to load session participants."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session?._id]
+  );
 
   useEffect(() => {
     fetchParticipants();
-  }, [session?._id]);
+  }, [fetchParticipants]);
 
-  const filteredParticipants = useMemo(() => {
-    const searchValue = searchText
-      .trim()
-      .toLowerCase();
+  const filteredParticipants = useMemo(
+    () => {
+      const searchValue = searchText
+        .trim()
+        .toLowerCase();
 
-    return participants.filter((student) => {
-      const matchesAttendance =
-        attendanceFilter === "all" ||
-        (attendanceFilter === "joined" &&
-          student.joined) ||
-        (attendanceFilter === "notJoined" &&
-          !student.joined);
+      return participants.filter(
+        (student) => {
+          const matchesAttendance =
+            attendanceFilter === "all" ||
+            (attendanceFilter ===
+              "joined" &&
+              student.joined) ||
+            (attendanceFilter ===
+              "notJoined" &&
+              !student.joined);
 
-      if (!matchesAttendance) {
-        return false;
-      }
+          if (!matchesAttendance) {
+            return false;
+          }
 
-      if (!searchValue) {
-        return true;
-      }
+          if (!searchValue) {
+            return true;
+          }
 
-      const studentId = String(
-        student.studentId || ""
-      ).toLowerCase();
+          const studentId = String(
+            student.studentId || ""
+          ).toLowerCase();
 
-      const name = String(
-        student.name || ""
-      ).toLowerCase();
+          const name = String(
+            student.name || ""
+          ).toLowerCase();
 
-      const email = String(
-        student.email || ""
-      ).toLowerCase();
+          const email = String(
+            student.email || ""
+          ).toLowerCase();
 
-      return (
-        studentId.includes(searchValue) ||
-        name.includes(searchValue) ||
-        email.includes(searchValue)
+          return (
+            studentId.includes(
+              searchValue
+            ) ||
+            name.includes(searchValue) ||
+            email.includes(searchValue)
+          );
+        }
       );
-    });
-  }, [
-    participants,
-    searchText,
-    attendanceFilter,
-  ]);
+    },
+    [
+      participants,
+      searchText,
+      attendanceFilter,
+    ]
+  );
 
-  const formatJoinedTime = (joinedAt) => {
+  const formatJoinedTime = (
+    joinedAt
+  ) => {
     if (!joinedAt) {
       return "—";
     }
 
-    return new Date(joinedAt).toLocaleString(
+    const date = new Date(joinedAt);
+
+    if (Number.isNaN(date.getTime())) {
+      return "—";
+    }
+
+    return date.toLocaleString(
       "en-GB",
       {
         day: "2-digit",
@@ -222,8 +264,9 @@ function SessionParticipants({ session, onBack }) {
           <h2>Session Participants</h2>
 
           <p>
-            Compare registered students with students
-            who actually joined this session.
+            Compare registered students with
+            students who actually joined this
+            session.
           </p>
         </div>
 
@@ -309,7 +352,8 @@ function SessionParticipants({ session, onBack }) {
         <button
           type="button"
           className={
-            attendanceFilter === "notJoined"
+            attendanceFilter ===
+            "notJoined"
               ? "participant-count-card not-joined-count-card count-card-active"
               : "participant-count-card not-joined-count-card"
           }
@@ -344,8 +388,9 @@ function SessionParticipants({ session, onBack }) {
         </div>
 
         <div className="participants-result-count">
-          Showing {filteredParticipants.length} of{" "}
-          {participants.length}
+          Showing{" "}
+          {filteredParticipants.length}{" "}
+          of {participants.length}
         </div>
       </div>
 
@@ -354,17 +399,18 @@ function SessionParticipants({ session, onBack }) {
           <h3>No Students Assigned</h3>
 
           <p>
-            No active students are currently assigned
-            to this subject.
+            No active students are currently
+            assigned to this subject.
           </p>
         </div>
-      ) : filteredParticipants.length === 0 ? (
+      ) : filteredParticipants.length ===
+        0 ? (
         <div className="participants-empty">
           <h3>No Matching Students</h3>
 
           <p>
-            No student matches the selected filter
-            and search.
+            No student matches the selected
+            filter and search.
           </p>
         </div>
       ) : (
@@ -385,21 +431,33 @@ function SessionParticipants({ session, onBack }) {
             <tbody>
               {filteredParticipants.map(
                 (student, index) => (
-                  <tr key={student._id}>
+                  <tr
+                    key={
+                      student._id ||
+                      student.studentId
+                    }
+                  >
                     <td>{index + 1}</td>
 
                     <td>
                       <strong>
-                        {student.studentId}
+                        {student.studentId ||
+                          "—"}
                       </strong>
                     </td>
 
-                    <td>{student.name}</td>
-
-                    <td>{student.email}</td>
+                    <td>
+                      {student.name || "—"}
+                    </td>
 
                     <td>
-                      Year {student.yearOfStudy}
+                      {student.email || "—"}
+                    </td>
+
+                    <td>
+                      {student.yearOfStudy
+                        ? `Year ${student.yearOfStudy}`
+                        : "—"}
                     </td>
 
                     <td>
@@ -430,10 +488,11 @@ function SessionParticipants({ session, onBack }) {
       )}
 
       <div className="participants-note">
-        <strong>Registered:</strong> Students assigned
-        to the subject.{" "}
-        <strong>Joined:</strong> Students who entered
-        this specific classroom session.
+        <strong>Registered:</strong>{" "}
+        Students assigned to the subject.{" "}
+        <strong>Joined:</strong> Students
+        who entered this specific classroom
+        session.
       </div>
     </section>
   );

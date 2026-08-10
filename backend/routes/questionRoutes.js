@@ -4,17 +4,65 @@ const Question = require("../models/Question");
 const Session = require("../models/Session");
 const Student = require("../models/Student");
 const Subject = require("../models/Subject");
+const {
+  authenticateToken,
+  allowRoles,
+  lecturerOnly,
+  studentOnly,
+  requireSelf,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/questions", async (req, res) => {
+const requireLecturerQuestion = async (req, res, next) => {
+  try {
+    const question = await Question.findById(req.params.id)
+      .select("_id sessionId");
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    const ownsSession = await Session.exists({
+      _id: question.sessionId,
+      lecturerId: req.user.id,
+    });
+
+    if (!ownsSession) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You are not authorised to manage this question",
+      });
+    }
+
+    return next();
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid question ID",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify question ownership",
+    });
+  }
+};
+
+router.post("/questions", ...studentOnly, async (req, res) => {
   try {
     const {
       sessionId,
       sessionCode,
-      studentId,
       question,
     } = req.body;
+    const studentId = req.user.id;
 
     if (
       !sessionId ||
@@ -158,8 +206,52 @@ router.post("/questions", async (req, res) => {
 
 router.get(
   "/questions/:sessionId",
+  authenticateToken,
+  allowRoles("lecturer", "student"),
   async (req, res) => {
     try {
+      const session = await Session.findById(
+        req.params.sessionId
+      ).select("_id lecturerId participants");
+
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          message: "Session not found",
+        });
+      }
+
+      if (
+        req.user.role === "lecturer" &&
+        String(session.lecturerId) !== String(req.user.id)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not authorised to view this session's questions",
+        });
+      }
+
+      if (req.user.role === "student") {
+        const student = await Student.findOne({
+          userId: req.user.id,
+          status: "active",
+        }).select("_id");
+
+        const joined = student && session.participants.some(
+          (participant) =>
+            String(participant.studentId) === String(student._id)
+        );
+
+        if (!joined) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "You must join this session before viewing its questions",
+          });
+        }
+      }
+
       const questions = await Question.find({
         sessionId: req.params.sessionId,
       }).sort({
@@ -202,6 +294,8 @@ router.get(
 
 router.put(
   "/questions/:id/respond",
+  ...lecturerOnly,
+  requireLecturerQuestion,
   async (req, res) => {
     try {
       const { answer } = req.body;
@@ -255,6 +349,8 @@ router.put(
 
 router.put(
   "/questions/:id/answer",
+  ...lecturerOnly,
+  requireLecturerQuestion,
   async (req, res) => {
     try {
       const updatedQuestion =
@@ -297,6 +393,8 @@ router.put(
 
 router.put(
   "/questions/:id/pin",
+  ...lecturerOnly,
+  requireLecturerQuestion,
   async (req, res) => {
     try {
       const question = await Question.findById(
@@ -336,6 +434,8 @@ router.put(
 
 router.delete(
   "/questions/:id",
+  ...lecturerOnly,
+  requireLecturerQuestion,
   async (req, res) => {
     try {
       const deletedQuestion =
@@ -370,6 +470,8 @@ router.delete(
 
 router.get(
   "/student/questions/:studentId",
+  ...studentOnly,
+  requireSelf("studentId"),
   async (req, res) => {
     try {
       /*

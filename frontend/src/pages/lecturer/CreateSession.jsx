@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
 import "./CreateSession.css";
 
@@ -91,6 +92,16 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
       );
 
       const newSession = response.data.session;
+
+      recordEvaluationEvent({
+        actorId: user?.id || user?._id,
+        eventType: "session_created",
+        sessionId: newSession._id,
+
+        metrics: {
+          success: true,
+        },
+      });
 
       setCreatedSession(newSession);
       setTitle("");

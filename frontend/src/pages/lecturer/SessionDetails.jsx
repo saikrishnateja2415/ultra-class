@@ -3,11 +3,17 @@ import QRCode from "react-qr-code";
 
 import "./SessionDetails.css";
 
+const APP_URL =
+  import.meta.env.VITE_APP_URL ||
+  window.location.origin;
+
+
 function SessionDetails({
   session,
   onBack,
   onDelete,
   onManageQuestions,
+  onManageMCQ,
   onViewParticipants,
   onViewAnalytics,
   onViewSummary,
@@ -74,8 +80,8 @@ function SessionDetails({
 
         <span
           className={`details-status ${sessionEnded
-              ? "details-status-ended"
-              : "details-status-active"
+            ? "details-status-ended"
+            : "details-status-active"
             }`}
         >
           {session.status}
@@ -148,8 +154,9 @@ function SessionDetails({
             <>
               <div className="details-qr-box">
                 <QRCode
-                  value={`http://localhost:5173/join/${session.sessionCode}`}
-                  size={180}
+                  value={`${APP_URL}/?sessionCode=${encodeURIComponent(
+                    session.sessionCode
+                  )}`}
                 />
               </div>
 
@@ -176,6 +183,14 @@ function SessionDetails({
           onClick={onManageQuestions}
         >
           Manage Questions
+        </button>
+
+        <button
+          type="button"
+          className="details-mcq-btn"
+          onClick={onManageMCQ}
+        >
+          Manage MCQ Polls
         </button>
 
         <button

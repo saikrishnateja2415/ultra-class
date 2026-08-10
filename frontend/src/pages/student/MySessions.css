@@ -4,10 +4,14 @@
   gap: 24px;
 }
 
+/* =========================================
+   PAGE HEADING
+   ========================================= */
+
 .my-sessions-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
 }
 
@@ -24,40 +28,63 @@
 }
 
 .my-sessions-refresh-button {
+  padding: 13px 22px;
   border: none;
   border-radius: 14px;
-  padding: 13px 22px;
-  background: linear-gradient(135deg, #4361ee, #7048e8);
+  background: linear-gradient(
+    135deg,
+    #4361ee,
+    #7048e8
+  );
   color: white;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .my-sessions-refresh-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.22);
+  box-shadow: 0 10px 22px rgba(
+    79,
+    70,
+    229,
+    0.22
+  );
 }
 
 .my-sessions-refresh-button:disabled {
-  opacity: 0.65;
   cursor: not-allowed;
+  opacity: 0.65;
   transform: none;
 }
 
+/* =========================================
+   SESSION STATISTICS
+   ========================================= */
+
 .my-sessions-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    4,
+    minmax(0, 1fr)
+  );
   gap: 18px;
 }
 
 .my-session-stat-card {
-  background: white;
+  padding: 22px;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
-  padding: 22px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  background: white;
+  box-shadow: 0 10px 28px rgba(
+    15,
+    23,
+    42,
+    0.06
+  );
 }
 
 .my-session-stat-card span {
@@ -73,14 +100,170 @@
   font-size: 30px;
 }
 
-.my-sessions-loading,
-.my-sessions-empty {
-  background: white;
+/* =========================================
+   REGISTERED-SUBJECT FILTER
+   ========================================= */
+
+.my-sessions-subject-section {
+  padding: 26px;
   border: 1px solid #e2e8f0;
   border-radius: 24px;
-  padding: 48px 28px;
+  background: white;
+  box-shadow: 0 10px 28px rgba(
+    15,
+    23,
+    42,
+    0.06
+  );
+}
+
+.my-sessions-subject-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.my-sessions-subject-heading h2 {
+  margin: 0 0 7px;
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.my-sessions-subject-heading p {
+  margin: 0;
+  color: #64748b;
+}
+
+.my-sessions-clear-filter {
+  flex-shrink: 0;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 12px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-sessions-clear-filter:hover {
+  background: #c7d2fe;
+}
+
+.my-sessions-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    3,
+    minmax(0, 1fr)
+  );
+  gap: 14px;
+}
+
+.my-sessions-subject-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 18px;
+  border: 1px solid #dbe3f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #111827;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.my-sessions-subject-card:hover,
+.my-sessions-subject-card.selected {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  transform: translateY(-2px);
+}
+
+.my-sessions-subject-card.selected {
+  box-shadow: 0 8px 20px rgba(
+    79,
+    70,
+    229,
+    0.14
+  );
+}
+
+.my-sessions-subject-card span {
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.my-sessions-subject-card small {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.my-subjects-message {
+  padding: 26px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #64748b;
   text-align: center;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+/* =========================================
+   FILTERED RESULT HEADING
+   ========================================= */
+
+.my-sessions-results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.my-sessions-results-heading h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 25px;
+}
+
+.my-sessions-results-heading p {
+  margin: 0;
+  color: #64748b;
+}
+
+.my-sessions-results-heading > span {
+  flex-shrink: 0;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* =========================================
+   LOADING AND EMPTY STATES
+   ========================================= */
+
+.my-sessions-loading,
+.my-sessions-empty {
+  padding: 48px 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: white;
+  text-align: center;
+  box-shadow: 0 10px 28px rgba(
+    15,
+    23,
+    42,
+    0.06
+  );
 }
 
 .my-sessions-loading {
@@ -100,9 +283,16 @@
   line-height: 1.6;
 }
 
+/* =========================================
+   SESSION CARD GRID
+   ========================================= */
+
 .my-sessions-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    2,
+    minmax(0, 1fr)
+  );
   gap: 20px;
 }
 
@@ -110,12 +300,17 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  background: white;
+  padding: 24px;
   border: 1px solid #e2e8f0;
   border-left: 5px solid #6366f1;
   border-radius: 22px;
-  padding: 24px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  background: white;
+  box-shadow: 0 10px 28px rgba(
+    15,
+    23,
+    42,
+    0.06
+  );
 }
 
 .my-session-card.ended {
@@ -124,8 +319,8 @@
 
 .my-session-card-top {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
 }
 
@@ -157,16 +352,23 @@
   color: #475569;
 }
 
+/* =========================================
+   SESSION INFORMATION
+   ========================================= */
+
 .my-session-information {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    2,
+    minmax(0, 1fr)
+  );
   gap: 12px;
 }
 
 .my-session-information div {
-  background: #f8fafc;
-  border-radius: 14px;
   padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
 }
 
 .my-session-information span {
@@ -184,9 +386,13 @@
   overflow-wrap: anywhere;
 }
 
+/* =========================================
+   AI SUMMARY STATUS
+   ========================================= */
+
 .my-session-summary-status {
-  border-radius: 14px;
   padding: 13px 15px;
+  border-radius: 14px;
   background: #fef3c7;
   color: #92400e;
   font-size: 14px;
@@ -199,6 +405,10 @@
   color: #166534;
 }
 
+/* =========================================
+   SESSION ACTIONS
+   ========================================= */
+
 .my-session-actions {
   display: flex;
   gap: 12px;
@@ -207,15 +417,21 @@
 
 .my-session-action-button {
   flex: 1;
+  padding: 13px 16px;
   border: none;
   border-radius: 13px;
-  padding: 13px 16px;
-  background: linear-gradient(135deg, #4361ee, #7048e8);
+  background: linear-gradient(
+    135deg,
+    #4361ee,
+    #7048e8
+  );
   color: white;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .my-session-action-button:hover {
@@ -235,9 +451,23 @@
   transform: none;
 }
 
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+
 @media (max-width: 1100px) {
   .my-sessions-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  }
+
+  .my-sessions-subject-grid {
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
   }
 
   .my-sessions-grid {
@@ -246,7 +476,9 @@
 }
 
 @media (max-width: 650px) {
-  .my-sessions-header {
+  .my-sessions-header,
+  .my-sessions-subject-heading,
+  .my-sessions-results-heading {
     flex-direction: column;
     align-items: stretch;
   }
@@ -256,8 +488,13 @@
   }
 
   .my-sessions-stats,
+  .my-sessions-subject-grid,
   .my-session-information {
     grid-template-columns: 1fr;
+  }
+
+  .my-sessions-clear-filter {
+    width: 100%;
   }
 
   .my-session-card-top,

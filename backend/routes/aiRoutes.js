@@ -12,6 +12,10 @@ const {
     generateStructuredContent,
     getGeminiModel,
 } = require("../services/geminiService");
+const {
+    lecturerOnly,
+    studentOnly,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -604,6 +608,7 @@ function formatAndValidateClusters(
 
 router.post(
     "/ai/sessions/:sessionId/question-clusters",
+    ...lecturerOnly,
     async (req, res) => {
         let session = null;
 
@@ -611,9 +616,9 @@ router.post(
             const { sessionId } = req.params;
 
             const {
-                lecturerId,
                 forceRegenerate = false,
             } = req.body;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -955,10 +960,11 @@ ${questionList}
 
 router.get(
     "/ai/sessions/:sessionId/question-clusters",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.query;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1035,6 +1041,7 @@ router.get(
 
 router.post(
     "/ai/sessions/:sessionId/summary",
+    ...lecturerOnly,
     async (req, res) => {
         let session = null;
 
@@ -1042,9 +1049,9 @@ router.post(
             const { sessionId } = req.params;
 
             const {
-                lecturerId,
                 forceRegenerate = false,
             } = req.body;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1472,10 +1479,11 @@ Instructions:
 
 router.get(
     "/ai/sessions/:sessionId/summary",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.query;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1559,18 +1567,19 @@ router.get(
 
 router.put(
     "/ai/sessions/:sessionId/summary",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
 
             const {
-                lecturerId,
                 summary,
                 keyTopics,
                 commonDifficulties,
                 importantExplanations,
                 revisionPoints,
             } = req.body;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1718,10 +1727,11 @@ LECTURER PUBLISHES SESSION SUMMARY
 
 router.put(
     "/ai/sessions/:sessionId/summary/publish",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.body;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1830,10 +1840,11 @@ router.put(
 
 router.put(
     "/ai/sessions/:sessionId/summary/unpublish",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.body;
+            const lecturerId = req.user.id;
 
             if (!lecturerId) {
                 return res.status(400).json({
@@ -1933,6 +1944,7 @@ router.put(
 
 router.post(
     "/ai/sessions/:sessionId/teaching-recommendations",
+    ...lecturerOnly,
     async (req, res) => {
         let session = null;
 
@@ -1940,9 +1952,9 @@ router.post(
             const { sessionId } = req.params;
 
             const {
-                lecturerId,
                 forceRegenerate = false,
             } = req.body;
+            const lecturerId = req.user.id;
 
             session = await findLecturerSession({
                 sessionId,
@@ -2485,10 +2497,11 @@ Allowed categories:
 
 router.get(
     "/ai/sessions/:sessionId/teaching-recommendations",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.query;
+            const lecturerId = req.user.id;
 
             const session = await findLecturerSession({
                 sessionId,
@@ -2566,6 +2579,7 @@ router.get(
 
 router.get(
     "/ai/student/sessions/:sessionId/published-summary",
+    ...studentOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
@@ -2575,7 +2589,7 @@ router.get(
               matching the existing student dashboard.
             */
 
-            const { studentId } = req.query;
+            const studentId = req.user.id;
 
             if (!studentId) {
                 return res.status(400).json({
@@ -2752,6 +2766,7 @@ router.get(
 
 router.post(
     "/ai/sessions/:sessionId/engagement-sentiment",
+    ...lecturerOnly,
     async (req, res) => {
         let session = null;
 
@@ -2759,9 +2774,9 @@ router.post(
             const { sessionId } = req.params;
 
             const {
-                lecturerId,
                 forceRegenerate = false,
             } = req.body;
+            const lecturerId = req.user.id;
 
             session = await findLecturerSession({
                 sessionId,
@@ -3268,10 +3283,11 @@ Instructions:
 
 router.get(
     "/ai/sessions/:sessionId/engagement-sentiment",
+    ...lecturerOnly,
     async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const { lecturerId } = req.query;
+            const lecturerId = req.user.id;
 
             const session = await findLecturerSession({
                 sessionId,

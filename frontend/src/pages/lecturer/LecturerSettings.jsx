@@ -1,8 +1,47 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import "./LecturerSettings.css";
 
 const API_URL = "http://localhost:5000";
+
+const readResponse = async (response) => {
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    const responseText = await response.text();
+
+    console.error(
+      "Expected JSON but received:",
+      responseText
+    );
+
+    throw new Error(
+      "The server returned an invalid response. Check that the backend is running."
+    );
+  }
+
+  return response.json();
+};
+
+const getAuthenticationHeaders = () => {
+  const token =
+    localStorage.getItem("authToken");
+
+  return {
+    "Content-Type": "application/json",
+
+    ...(token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {}),
+  };
+};
 
 function LecturerSettings({ user, logout }) {
   const userId =
@@ -10,15 +49,21 @@ function LecturerSettings({ user, logout }) {
     user?.id ||
     localStorage.getItem("userId");
 
-  const [lecturer, setLecturer] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [lecturer, setLecturer] =
+    useState(null);
 
-  const [profileForm, setProfileForm] = useState({
-    name: "",
-    email: "",
-    qualification: "",
-  });
+  const [loading, setLoading] =
+    useState(true);
+
+  const [loadError, setLoadError] =
+    useState("");
+
+  const [profileForm, setProfileForm] =
+    useState({
+      name: "",
+      email: "",
+      qualification: "",
+    });
 
   const [profileMessage, setProfileMessage] =
     useState("");
@@ -29,11 +74,12 @@ function LecturerSettings({ user, logout }) {
   const [savingProfile, setSavingProfile] =
     useState(false);
 
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  const [passwordForm, setPasswordForm] =
+    useState({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
 
   const [passwordMessage, setPasswordMessage] =
     useState("");
@@ -41,109 +87,88 @@ function LecturerSettings({ user, logout }) {
   const [passwordError, setPasswordError] =
     useState("");
 
-  const [changingPassword, setChangingPassword] =
-    useState(false);
+  const [
+    changingPassword,
+    setChangingPassword,
+  ] = useState(false);
 
   /*
-  ================================================
-  SAFE RESPONSE READER
-  ================================================
+    Load the logged-in lecturer's profile, subjects
+    and courses.
   */
 
-  const readResponse = async (response) => {
-    const contentType =
-      response.headers.get("content-type") || "";
+  const loadLecturerSettings = useCallback(
+    async () => {
+      if (!userId) {
+        setLoadError(
+          "Lecturer account information is missing. Please log in again."
+        );
 
-    if (!contentType.includes("application/json")) {
-      const responseText = await response.text();
+        setLoading(false);
+        return;
+      }
 
-      console.error(
-        "Expected JSON but received:",
-        responseText
-      );
+      try {
+        setLoading(true);
+        setLoadError("");
 
-      throw new Error(
-        "The server returned an invalid response. Check that the backend is running."
-      );
-    }
+        const response = await fetch(
+          `${API_URL}/lecturer/settings/${userId}`,
+          {
+            headers:
+              getAuthenticationHeaders(),
+          }
+        );
 
-    return response.json();
-  };
+        const data =
+          await readResponse(response);
 
-  /*
-  ================================================
-  LOAD LECTURER SETTINGS
-  ================================================
-  */
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message ||
+              "Unable to load lecturer settings"
+          );
+        }
 
-  const loadLecturerSettings = async () => {
-    if (!userId) {
-      setLoadError(
-        "Lecturer account information is missing. Please log in again."
-      );
+        const lecturerData =
+          data.lecturer ||
+          data.staff ||
+          data.profile;
 
-      setLoading(false);
-      return;
-    }
+        if (!lecturerData) {
+          throw new Error(
+            "Lecturer profile was not returned by the server"
+          );
+        }
 
-    try {
-      setLoading(true);
-      setLoadError("");
+        setLecturer(lecturerData);
 
-      const response = await fetch(
-        `${API_URL}/lecturer/settings/${userId}`
-      );
+        setProfileForm({
+          name: lecturerData.name || "",
+          email: lecturerData.email || "",
+          qualification:
+            lecturerData.qualification || "",
+        });
+      } catch (error) {
+        console.error(
+          "Load lecturer settings error:",
+          error
+        );
 
-      const data = await readResponse(response);
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
+        setLoadError(
+          error.message ||
             "Unable to load lecturer settings"
         );
+      } finally {
+        setLoading(false);
       }
-
-      const lecturerData =
-        data.lecturer || data.staff || data.profile;
-
-      if (!lecturerData) {
-        throw new Error(
-          "Lecturer profile was not returned by the server"
-        );
-      }
-
-      setLecturer(lecturerData);
-
-      setProfileForm({
-        name: lecturerData.name || "",
-        email: lecturerData.email || "",
-        qualification:
-          lecturerData.qualification || "",
-      });
-    } catch (error) {
-      console.error(
-        "Load lecturer settings error:",
-        error
-      );
-
-      setLoadError(
-        error.message ||
-          "Unable to load lecturer settings"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [userId]
+  );
 
   useEffect(() => {
     loadLecturerSettings();
-  }, [userId]);
-
-  /*
-  ================================================
-  PROFILE FORM
-  ================================================
-  */
+  }, [loadLecturerSettings]);
 
   const handleProfileChange = (event) => {
     const { name, value } = event.target;
@@ -157,21 +182,29 @@ function LecturerSettings({ user, logout }) {
     setProfileError("");
   };
 
-  const handleProfileSubmit = async (event) => {
+  const handleProfileSubmit = async (
+    event
+  ) => {
     event.preventDefault();
 
-    const name = profileForm.name.trim();
+    const name =
+      profileForm.name.trim();
+
     const email = profileForm.email
       .trim()
       .toLowerCase();
 
     if (!name) {
-      setProfileError("Lecturer name is required.");
+      setProfileError(
+        "Lecturer name is required."
+      );
       return;
     }
 
     if (!email) {
-      setProfileError("Email address is required.");
+      setProfileError(
+        "Email address is required."
+      );
       return;
     }
 
@@ -185,9 +218,8 @@ function LecturerSettings({ user, logout }) {
         {
           method: "PUT",
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers:
+            getAuthenticationHeaders(),
 
           body: JSON.stringify({
             name,
@@ -198,7 +230,8 @@ function LecturerSettings({ user, logout }) {
         }
       );
 
-      const data = await readResponse(response);
+      const data =
+        await readResponse(response);
 
       if (!response.ok || !data.success) {
         throw new Error(
@@ -213,31 +246,70 @@ function LecturerSettings({ user, logout }) {
         data.profile;
 
       if (updatedLecturer) {
-        setLecturer((currentLecturer) => ({
-          ...currentLecturer,
-          ...updatedLecturer,
-        }));
+        setLecturer(
+          (currentLecturer) => ({
+            ...currentLecturer,
+            ...updatedLecturer,
+          })
+        );
 
         setProfileForm({
-          name: updatedLecturer.name || name,
-          email: updatedLecturer.email || email,
+          name:
+            updatedLecturer.name || name,
+
+          email:
+            updatedLecturer.email || email,
+
           qualification:
             updatedLecturer.qualification ||
             profileForm.qualification,
         });
       } else {
-        setLecturer((currentLecturer) => ({
-          ...currentLecturer,
-          name,
-          email,
-          qualification:
-            profileForm.qualification.trim(),
-        }));
+        setLecturer(
+          (currentLecturer) => ({
+            ...currentLecturer,
+            name,
+            email,
+            qualification:
+              profileForm.qualification.trim(),
+          })
+        );
+      }
+
+      /*
+        Update stored user information so the new name
+        remains available after a browser refresh.
+      */
+
+      const savedUser =
+        localStorage.getItem(
+          "ultraClassUser"
+        );
+
+      if (savedUser) {
+        try {
+          const parsedUser =
+            JSON.parse(savedUser);
+
+          localStorage.setItem(
+            "ultraClassUser",
+            JSON.stringify({
+              ...parsedUser,
+              name,
+              email,
+            })
+          );
+        } catch (storageError) {
+          console.error(
+            "Update saved user error:",
+            storageError
+          );
+        }
       }
 
       setProfileMessage(
         data.message ||
-          "Profile updated successfully. The dashboard header may update after your next login."
+          "Profile updated successfully."
       );
     } catch (error) {
       console.error(
@@ -262,20 +334,17 @@ function LecturerSettings({ user, logout }) {
     setProfileForm({
       name: lecturer.name || "",
       email: lecturer.email || "",
-      qualification: lecturer.qualification || "",
+      qualification:
+        lecturer.qualification || "",
     });
 
     setProfileMessage("");
     setProfileError("");
   };
 
-  /*
-  ================================================
-  PASSWORD FORM
-  ================================================
-  */
-
-  const handlePasswordChange = (event) => {
+  const handlePasswordChange = (
+    event
+  ) => {
     const { name, value } = event.target;
 
     setPasswordForm((currentForm) => ({
@@ -287,7 +356,9 @@ function LecturerSettings({ user, logout }) {
     setPasswordError("");
   };
 
-  const handlePasswordSubmit = async (event) => {
+  const handlePasswordSubmit = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (!passwordForm.currentPassword) {
@@ -297,7 +368,9 @@ function LecturerSettings({ user, logout }) {
       return;
     }
 
-    if (passwordForm.newPassword.length < 8) {
+    if (
+      passwordForm.newPassword.length < 8
+    ) {
       setPasswordError(
         "The new password must contain at least 8 characters."
       );
@@ -334,15 +407,17 @@ function LecturerSettings({ user, logout }) {
         {
           method: "PUT",
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers:
+            getAuthenticationHeaders(),
 
-          body: JSON.stringify(passwordForm),
+          body: JSON.stringify(
+            passwordForm
+          ),
         }
       );
 
-      const data = await readResponse(response);
+      const data =
+        await readResponse(response);
 
       if (!response.ok || !data.success) {
         throw new Error(
@@ -384,23 +459,17 @@ function LecturerSettings({ user, logout }) {
     }
   };
 
-  /*
-  ================================================
-  PAGE STATES
-  ================================================
-  */
-
   if (loading) {
     return (
       <section className="lecturer-settings-page">
         <div className="settings-state-card">
-          <div className="settings-loader"></div>
+          <div className="settings-loader" />
 
           <h2>Loading Settings</h2>
 
           <p>
-            Retrieving your lecturer profile and
-            academic assignments.
+            Retrieving your lecturer profile
+            and academic assignments.
           </p>
         </div>
       </section>
@@ -411,9 +480,13 @@ function LecturerSettings({ user, logout }) {
     return (
       <section className="lecturer-settings-page">
         <div className="settings-state-card settings-error-state">
-          <span className="settings-state-icon">!</span>
+          <span className="settings-state-icon">
+            !
+          </span>
 
-          <h2>Unable to Load Settings</h2>
+          <h2>
+            Unable to Load Settings
+          </h2>
 
           <p>{loadError}</p>
 
@@ -428,17 +501,15 @@ function LecturerSettings({ user, logout }) {
     );
   }
 
-  /*
-  ================================================
-  NORMALISE ASSIGNED DATA
-  ================================================
-  */
-
-  const subjects = Array.isArray(lecturer?.subjects)
+  const subjects = Array.isArray(
+    lecturer?.subjects
+  )
     ? lecturer.subjects
     : [];
 
-  const courses = Array.isArray(lecturer?.courses)
+  const courses = Array.isArray(
+    lecturer?.courses
+  )
     ? lecturer.courses
     : [];
 
@@ -456,14 +527,16 @@ function LecturerSettings({ user, logout }) {
           <h1>Profile & Settings</h1>
 
           <p>
-            Review your academic information, update
-            your profile and manage your password.
+            Review your academic information,
+            update your profile and manage
+            your password.
           </p>
         </div>
 
         <div
           className={`settings-status-badge ${
-            status.toLowerCase() === "active"
+            status.toLowerCase() ===
+            "active"
               ? "settings-status-active"
               : "settings-status-inactive"
           }`}
@@ -478,7 +551,8 @@ function LecturerSettings({ user, logout }) {
           <span>Staff ID</span>
 
           <strong>
-            {lecturer?.staffId || "Not available"}
+            {lecturer?.staffId ||
+              "Not available"}
           </strong>
         </div>
 
@@ -486,7 +560,8 @@ function LecturerSettings({ user, logout }) {
           <span>Department</span>
 
           <strong>
-            {lecturer?.department || "Not available"}
+            {lecturer?.department ||
+              "Not available"}
           </strong>
         </div>
 
@@ -502,7 +577,9 @@ function LecturerSettings({ user, logout }) {
         <div className="settings-summary-card">
           <span>Assigned Subjects</span>
 
-          <strong>{subjects.length}</strong>
+          <strong>
+            {subjects.length}
+          </strong>
         </div>
       </div>
 
@@ -510,7 +587,10 @@ function LecturerSettings({ user, logout }) {
         <div className="settings-panel">
           <div className="settings-panel-heading">
             <div>
-              <span>Personal Information</span>
+              <span>
+                Personal Information
+              </span>
+
               <h2>Edit Profile</h2>
             </div>
 
@@ -521,7 +601,9 @@ function LecturerSettings({ user, logout }) {
 
           <form
             className="settings-form"
-            onSubmit={handleProfileSubmit}
+            onSubmit={
+              handleProfileSubmit
+            }
           >
             <div className="settings-form-group">
               <label htmlFor="lecturer-name">
@@ -533,7 +615,9 @@ function LecturerSettings({ user, logout }) {
                 type="text"
                 name="name"
                 value={profileForm.name}
-                onChange={handleProfileChange}
+                onChange={
+                  handleProfileChange
+                }
                 placeholder="Enter your full name"
                 autoComplete="name"
               />
@@ -549,7 +633,9 @@ function LecturerSettings({ user, logout }) {
                 type="email"
                 name="email"
                 value={profileForm.email}
-                onChange={handleProfileChange}
+                onChange={
+                  handleProfileChange
+                }
                 placeholder="Enter your email address"
                 autoComplete="email"
               />
@@ -564,8 +650,12 @@ function LecturerSettings({ user, logout }) {
                 id="lecturer-qualification"
                 type="text"
                 name="qualification"
-                value={profileForm.qualification}
-                onChange={handleProfileChange}
+                value={
+                  profileForm.qualification
+                }
+                onChange={
+                  handleProfileChange
+                }
                 placeholder="For example: PhD, MSc, MTech"
               />
             </div>
@@ -586,7 +676,9 @@ function LecturerSettings({ user, logout }) {
               <button
                 type="button"
                 className="settings-secondary-btn"
-                onClick={resetProfileForm}
+                onClick={
+                  resetProfileForm
+                }
                 disabled={savingProfile}
               >
                 Reset
@@ -608,7 +700,10 @@ function LecturerSettings({ user, logout }) {
         <div className="settings-panel">
           <div className="settings-panel-heading">
             <div>
-              <span>Account Security</span>
+              <span>
+                Account Security
+              </span>
+
               <h2>Change Password</h2>
             </div>
 
@@ -619,7 +714,9 @@ function LecturerSettings({ user, logout }) {
 
           <form
             className="settings-form"
-            onSubmit={handlePasswordSubmit}
+            onSubmit={
+              handlePasswordSubmit
+            }
           >
             <div className="settings-form-group">
               <label htmlFor="current-password">
@@ -633,7 +730,9 @@ function LecturerSettings({ user, logout }) {
                 value={
                   passwordForm.currentPassword
                 }
-                onChange={handlePasswordChange}
+                onChange={
+                  handlePasswordChange
+                }
                 placeholder="Enter current password"
                 autoComplete="current-password"
               />
@@ -648,8 +747,12 @@ function LecturerSettings({ user, logout }) {
                 id="new-password"
                 type="password"
                 name="newPassword"
-                value={passwordForm.newPassword}
-                onChange={handlePasswordChange}
+                value={
+                  passwordForm.newPassword
+                }
+                onChange={
+                  handlePasswordChange
+                }
                 placeholder="Minimum 8 characters"
                 autoComplete="new-password"
               />
@@ -667,19 +770,23 @@ function LecturerSettings({ user, logout }) {
                 value={
                   passwordForm.confirmPassword
                 }
-                onChange={handlePasswordChange}
+                onChange={
+                  handlePasswordChange
+                }
                 placeholder="Re-enter new password"
                 autoComplete="new-password"
               />
             </div>
 
             <div className="settings-password-note">
-              <strong>Password requirements</strong>
+              <strong>
+                Password requirements
+              </strong>
 
               <p>
-                Use at least 8 characters and choose a
-                password different from your current
-                password.
+                Use at least 8 characters and
+                choose a password different
+                from your current password.
               </p>
             </div>
 
@@ -699,7 +806,9 @@ function LecturerSettings({ user, logout }) {
               <button
                 type="submit"
                 className="settings-primary-btn"
-                disabled={changingPassword}
+                disabled={
+                  changingPassword
+                }
               >
                 {changingPassword
                   ? "Changing Password..."
@@ -714,7 +823,10 @@ function LecturerSettings({ user, logout }) {
         <div className="settings-panel">
           <div className="settings-panel-heading">
             <div>
-              <span>Teaching Allocation</span>
+              <span>
+                Teaching Allocation
+              </span>
+
               <h2>Assigned Subjects</h2>
             </div>
 
@@ -725,39 +837,45 @@ function LecturerSettings({ user, logout }) {
 
           {subjects.length === 0 ? (
             <div className="settings-empty-list">
-              <h3>No subjects assigned</h3>
+              <h3>
+                No subjects assigned
+              </h3>
 
               <p>
-                Subject assignments are managed by the
-                administrator.
+                Subject assignments are
+                managed by the administrator.
               </p>
             </div>
           ) : (
             <div className="settings-assignment-list">
-              {subjects.map((subject, index) => (
-                <div
-                  className="settings-assignment-item"
-                  key={subject._id || index}
-                >
-                  <div className="settings-assignment-number">
-                    {index + 1}
-                  </div>
+              {subjects.map(
+                (subject, index) => (
+                  <div
+                    className="settings-assignment-item"
+                    key={
+                      subject._id || index
+                    }
+                  >
+                    <div className="settings-assignment-number">
+                      {index + 1}
+                    </div>
 
-                  <div>
-                    <h3>
-                      {subject.subjectName ||
-                        subject.name ||
-                        "Unnamed subject"}
-                    </h3>
+                    <div>
+                      <h3>
+                        {subject.subjectName ||
+                          subject.name ||
+                          "Unnamed subject"}
+                      </h3>
 
-                    <p>
-                      {subject.subjectCode ||
-                        subject.moduleCode ||
-                        "Code unavailable"}
-                    </p>
+                      <p>
+                        {subject.subjectCode ||
+                          subject.moduleCode ||
+                          "Code unavailable"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
         </div>
@@ -765,7 +883,10 @@ function LecturerSettings({ user, logout }) {
         <div className="settings-panel">
           <div className="settings-panel-heading">
             <div>
-              <span>Academic Allocation</span>
+              <span>
+                Academic Allocation
+              </span>
+
               <h2>Assigned Courses</h2>
             </div>
 
@@ -776,55 +897,64 @@ function LecturerSettings({ user, logout }) {
 
           {courses.length === 0 ? (
             <div className="settings-empty-list">
-              <h3>No courses assigned</h3>
+              <h3>
+                No courses assigned
+              </h3>
 
               <p>
-                Course assignments are managed by the
-                administrator.
+                Course assignments are
+                managed by the administrator.
               </p>
             </div>
           ) : (
             <div className="settings-assignment-list">
-              {courses.map((course, index) => (
-                <div
-                  className="settings-assignment-item"
-                  key={course._id || index}
-                >
-                  <div className="settings-assignment-number">
-                    {index + 1}
-                  </div>
+              {courses.map(
+                (course, index) => (
+                  <div
+                    className="settings-assignment-item"
+                    key={
+                      course._id || index
+                    }
+                  >
+                    <div className="settings-assignment-number">
+                      {index + 1}
+                    </div>
 
-                  <div>
-                    <h3>
-                      {course.courseName ||
-                        course.name ||
-                        "Unnamed course"}
-                    </h3>
+                    <div>
+                      <h3>
+                        {course.courseName ||
+                          course.name ||
+                          "Unnamed course"}
+                      </h3>
 
-                    <p>
-                      {course.courseCode ||
-                        course.code ||
-                        "Code unavailable"}
-                    </p>
+                      <p>
+                        {course.courseCode ||
+                          course.code ||
+                          "Code unavailable"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           )}
         </div>
       </div>
 
       <div className="settings-security-warning">
-        <div className="settings-warning-icon">i</div>
+        <div className="settings-warning-icon">
+          i
+        </div>
 
         <div>
           <h3>Account Security</h3>
 
           <p>
-            Never share your password or API credentials.
-            Password changes require your existing
-            password and will sign you out after a
-            successful update.
+            Never share your password or API
+            credentials. Password changes
+            require your existing password and
+            will sign you out after a successful
+            update.
           </p>
         </div>
       </div>

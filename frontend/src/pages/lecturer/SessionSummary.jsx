@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import axios from "axios";
+import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
 import "./SessionSummary.css";
 
@@ -160,6 +161,18 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setMetadata(
                 response.data.metadata || null
             );
+
+            if (!response.data.cached) {
+                recordEvaluationEvent({
+                    actorId: lecturerId,
+                    eventType: "ai_analysis_generated",
+                    sessionId: session._id,
+
+                    metrics: {
+                        success: true,
+                    },
+                });
+            }
 
             setMessage(
                 response.data.cached
@@ -357,6 +370,16 @@ function SessionSummary({ session, onBack, onEndSession }) {
                 response.data.sessionSummary
             );
 
+            recordEvaluationEvent({
+                actorId: lecturerId,
+                eventType: "ai_summary_published",
+                sessionId: session._id,
+
+                metrics: {
+                    success: true,
+                },
+            });
+
             setMessage(
                 "Session summary published successfully."
             );
@@ -400,6 +423,16 @@ END SESSION FROM SUMMARY PAGE
             setMessage("");
 
             await onEndSession(session._id);
+
+            recordEvaluationEvent({
+                actorId: lecturerId,
+                eventType: "session_ended",
+                sessionId: session._id,
+
+                metrics: {
+                    success: true,
+                },
+            });
 
             setMessage(
                 "Session ended successfully. You can now approve and publish the reviewed summary."

@@ -66,7 +66,7 @@ function StudentList() {
 
       setMessage(
         error.response?.data?.message ||
-          "Unable to load students."
+        "Unable to load students."
       );
 
       setMessageType("error");
@@ -135,7 +135,7 @@ function StudentList() {
       : [];
   };
 
-  const filteredStudents = useMemo(() => {
+  const filteredStudents = (() => {
     const search = safeString(searchTerm)
       .trim()
       .toLowerCase();
@@ -157,10 +157,12 @@ function StudentList() {
       ];
 
       return searchableValues.some((value) =>
-        safeString(value).toLowerCase().includes(search)
+        safeString(value)
+          .toLowerCase()
+          .includes(search)
       );
     });
-  }, [students, searchTerm]);
+  })();
 
   const selectedEditCourse = useMemo(() => {
     if (!editingStudent?.courseId) {
@@ -284,8 +286,8 @@ function StudentList() {
         ...currentStudent,
         subjectIds: alreadySelected
           ? currentSubjectIds.filter(
-              (id) => id !== safeSubjectId
-            )
+            (id) => id !== safeSubjectId
+          )
           : [...currentSubjectIds, safeSubjectId],
       };
     });
@@ -392,7 +394,7 @@ function StudentList() {
         setStudents((currentStudents) =>
           currentStudents.map((student) =>
             safeString(student?._id) ===
-            safeString(editingStudent._id)
+              safeString(editingStudent._id)
               ? updatedStudent
               : student
           )
@@ -403,7 +405,7 @@ function StudentList() {
 
       setMessage(
         response.data?.message ||
-          "Student updated successfully."
+        "Student updated successfully."
       );
       setMessageType("success");
       setEditingStudent(null);
@@ -412,7 +414,7 @@ function StudentList() {
 
       setMessage(
         error.response?.data?.message ||
-          "Unable to update the student."
+        "Unable to update the student."
       );
       setMessageType("error");
     } finally {
@@ -457,7 +459,7 @@ function StudentList() {
 
       setMessage(
         response.data?.message ||
-          "Student deleted successfully."
+        "Student deleted successfully."
       );
       setMessageType("success");
     } catch (error) {
@@ -465,7 +467,7 @@ function StudentList() {
 
       setMessage(
         error.response?.data?.message ||
-          "Unable to delete the student."
+        "Unable to delete the student."
       );
       setMessageType("error");
     } finally {
@@ -632,11 +634,10 @@ function StudentList() {
 
                         <td>
                           <span
-                            className={`student-status-badge ${
-                              safeString(
-                                student?.status
-                              ) || "active"
-                            }`}
+                            className={`student-status-badge ${safeString(
+                              student?.status
+                            ) || "active"
+                              }`}
                           >
                             {safeString(
                               student?.status
@@ -901,12 +902,12 @@ function StudentList() {
 
                   {availableEditSubjects.length >
                     0 && (
-                    <span>
-                      {editingStudent.subjectIds
-                        ?.length || 0}{" "}
-                      selected
-                    </span>
-                  )}
+                      <span>
+                        {editingStudent.subjectIds
+                          ?.length || 0}{" "}
+                        selected
+                      </span>
+                    )}
                 </div>
 
                 {!editingStudent.courseId ? (
@@ -926,27 +927,27 @@ function StudentList() {
                       (subject, index) => {
                         const subjectId =
                           typeof subject ===
-                          "string"
+                            "string"
                             ? subject
                             : safeString(
-                                subject?._id
-                              );
+                              subject?._id
+                            );
 
                         const subjectCode =
                           typeof subject ===
-                          "string"
+                            "string"
                             ? ""
                             : safeString(
-                                subject?.subjectCode
-                              );
+                              subject?.subjectCode
+                            );
 
                         const subjectName =
                           typeof subject ===
-                          "string"
+                            "string"
                             ? "Subject"
                             : safeString(
-                                subject?.subjectName
-                              ) || "Unnamed Subject";
+                              subject?.subjectName
+                            ) || "Unnamed Subject";
 
                         return (
                           <label
