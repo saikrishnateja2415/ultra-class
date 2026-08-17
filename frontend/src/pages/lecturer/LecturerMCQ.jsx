@@ -6,11 +6,14 @@ import {
 
 import axios from "axios";
 import * as XLSX from "xlsx";
+
+import {
+  API_URL,
+} from "../../config/api";
+
 import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
 import "./LecturerMCQ.css";
-
-const API_URL = "http://localhost:5000";
 
 const createInitialForm = () => ({
     question: "",

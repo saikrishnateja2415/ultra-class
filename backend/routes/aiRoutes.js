@@ -1719,11 +1719,7 @@ router.put(
 );
 
 
-/*
-====================================================
-LECTURER PUBLISHES SESSION SUMMARY
-====================================================
-*/
+
 
 router.put(
     "/ai/sessions/:sessionId/summary/publish",

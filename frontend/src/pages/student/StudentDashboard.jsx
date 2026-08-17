@@ -18,11 +18,11 @@ import {
   recordEvaluationEvent,
 } from "../../services/evaluationLogger";
 
-import "./StudentDashboard.css";
+import {
+  API_URL,
+} from "../../config/api";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `http://${window.location.hostname}:5000`;
+import "./StudentDashboard.css";
 
 function getStoredSession(storageKey) {
   if (!storageKey) {
@@ -123,13 +123,6 @@ function StudentDashboard({
     setRestoringSession,
   ] = useState(false);
 
-  /*
-    Read the session code supplied by the lecturer's
-    QR code.
-
-    Example:
-    http://10.12.0.49:5173/?sessionCode=UC-ABCDE
-  */
 
   useEffect(() => {
     const searchParameters =

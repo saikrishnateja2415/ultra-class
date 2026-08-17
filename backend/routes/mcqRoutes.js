@@ -355,11 +355,6 @@ const validateExcelRow = ({
   };
 };
 
-/* =================================================
-   BULK VALIDATE OR IMPORT MCQS
-
-   POST /lecturer/mcq-polls/bulk
-   ================================================= */
 
 router.post(
   "/lecturer/mcq-polls/bulk",
@@ -679,11 +674,7 @@ router.post(
   }
 );
 
-/* =================================================
-   CREATE ONE MCQ MANUALLY
 
-   POST /lecturer/mcq-polls
-   ================================================= */
 
 router.post(
   "/lecturer/mcq-polls",
@@ -918,11 +909,7 @@ router.post(
   }
 );
 
-/* =================================================
-   GET ALL MCQS FOR A LECTURER SESSION
 
-   GET /lecturer/:lecturerId/sessions/:sessionId/mcq-polls
-   ================================================= */
 
 router.get(
   "/lecturer/:lecturerId/sessions/:sessionId/mcq-polls",
@@ -1077,11 +1064,6 @@ router.get(
   }
 );
 
-/* =================================================
-   OPEN ALL DRAFT MCQS FOR A SESSION
-
-   PUT /lecturer/mcq-polls/session/:sessionId/open-all
-   ================================================= */
 
 router.put(
   "/lecturer/mcq-polls/session/:sessionId/open-all",
@@ -1197,11 +1179,7 @@ router.put(
   }
 );
 
-/* =================================================
-   DELETE ONE DRAFT MCQ
 
-   DELETE /lecturer/mcq-polls/:pollId
-   ================================================= */
 
 router.delete(
   "/lecturer/mcq-polls/:pollId",
@@ -1290,11 +1268,7 @@ router.delete(
   }
 );
 
-/* =================================================
-   CLOSE ALL OPEN MCQS FOR A SESSION
 
-   PUT /lecturer/mcq-polls/session/:sessionId/close-all
-   ================================================= */
 
 router.put(
   "/lecturer/mcq-polls/session/:sessionId/close-all",
@@ -1403,11 +1377,7 @@ router.put(
   }
 );
 
-/* =================================================
-   CLOSE ONE MCQ POLL (LEGACY ROUTE)
 
-   PUT /lecturer/mcq-polls/:pollId/close
-   ================================================= */
 
 router.put(
   "/lecturer/mcq-polls/:pollId/close",
@@ -1497,15 +1467,7 @@ router.put(
   }
 );
 
-/* =================================================
-   GET MCQS FOR A STUDENT SESSION
 
-   GET /student/:studentId/sessions/:sessionId/mcq-polls
-
-   studentId is the logged-in User account ID.
-   Correct answers remain hidden until the result is
-   allowed to be revealed.
-   ================================================= */
 
 router.get(
   "/student/:studentId/sessions/:sessionId/mcq-polls",
@@ -1708,14 +1670,7 @@ router.get(
   }
 );
 
-/* =================================================
-   SUBMIT ONE STUDENT MCQ ANSWER
 
-   POST /student/mcq-polls/:pollId/submit
-
-   A unique database index on pollId + studentId also
-   enforces one attempt if two requests arrive together.
-   ================================================= */
 
 router.post(
   "/student/mcq-polls/:pollId/submit",
@@ -1926,14 +1881,7 @@ router.post(
   }
 );
 
-/* =================================================
-   GET STUDENT QUIZ HISTORY
 
-   GET /student/:studentId/mcq-history
-
-   Returns one history record per joined session quiz,
-   rather than returning one history row per question.
-   ================================================= */
 
 router.get(
   "/student/:studentId/mcq-history",

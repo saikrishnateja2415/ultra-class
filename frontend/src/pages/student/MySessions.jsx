@@ -6,6 +6,10 @@ import {
 
 import axios from "axios";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./MySessions.css";
 
 function MySessions({
@@ -47,7 +51,7 @@ function MySessions({
         setSubjectsLoading(true);
 
         const response = await axios.get(
-          `http://localhost:5000/student/${studentId}/joined-sessions`
+          `${API_URL}/student/${studentId}/joined-sessions`
         );
 
         setRegisteredSubjects(

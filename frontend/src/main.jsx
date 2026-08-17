@@ -3,22 +3,11 @@ import { createRoot } from "react-dom/client";
 import axios from "axios";
 
 import App from "./App.jsx";
+import { API_URL } from "./config/api";
+
 import "./index.css";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `http://${window.location.hostname}:5000`;
-
-/*
-  This interceptor performs two tasks:
-
-  1. Adds the JWT token to protected requests.
-  2. Replaces old localhost backend URLs with the
-     configured network or production API URL.
-
-  This allows older components to continue working
-  without changing every Axios request individually.
-*/
+axios.defaults.baseURL = API_URL;
 
 axios.interceptors.request.use(
   (config) => {
@@ -41,7 +30,7 @@ axios.interceptors.request.use(
     ) {
       config.url = config.url.replace(
         "http://localhost:5000",
-        API_URL
+        ""
       );
     }
 
@@ -53,19 +42,15 @@ axios.interceptors.request.use(
     ) {
       config.url = config.url.replace(
         "http://127.0.0.1:5000",
-        API_URL
+        ""
       );
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) =>
+    Promise.reject(error)
 );
-
-/*
-  Clear invalid authentication data if the backend
-  reports that the token is missing, invalid or expired.
-*/
 
 axios.interceptors.response.use(
   (response) => response,

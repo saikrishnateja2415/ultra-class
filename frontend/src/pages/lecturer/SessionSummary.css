@@ -4,11 +4,6 @@
   gap: 24px;
 }
 
-/*
-========================================
-BACK BUTTON
-========================================
-*/
 
 .session-summary-back-btn {
   width: fit-content;
@@ -30,11 +25,6 @@ BACK BUTTON
   transform: translateY(-1px);
 }
 
-/*
-========================================
-HERO
-========================================
-*/
 
 .session-summary-hero {
   padding: 32px;
@@ -119,12 +109,6 @@ HERO
   color: #991b1b;
 }
 
-/*
-========================================
-MESSAGES
-========================================
-*/
-
 .session-summary-error,
 .session-summary-success,
 .session-summary-loading {
@@ -151,12 +135,6 @@ MESSAGES
   background: #eff6ff;
   color: #1d4ed8;
 }
-
-/*
-========================================
-FIRST GENERATION CARD
-========================================
-*/
 
 .summary-generation-card {
   padding: 55px 30px;
@@ -245,12 +223,6 @@ FIRST GENERATION CARD
   box-shadow: none;
 }
 
-/*
-========================================
-REVIEW TOOLBAR
-========================================
-*/
-
 .summary-review-toolbar {
   padding: 24px 26px;
   border-radius: 22px;
@@ -305,12 +277,6 @@ REVIEW TOOLBAR
   opacity: 0.55;
 }
 
-/*
-========================================
-METADATA
-========================================
-*/
-
 .summary-metadata-grid {
   display: grid;
   grid-template-columns:
@@ -341,12 +307,6 @@ METADATA
   line-height: 1.45;
   word-break: break-word;
 }
-
-/*
-========================================
-CONTENT CARDS
-========================================
-*/
 
 .summary-overview-card,
 .summary-content-card {
@@ -425,12 +385,6 @@ CONTENT CARDS
   line-height: 1.8;
 }
 
-/*
-========================================
-SUMMARY LISTS
-========================================
-*/
-
 .summary-point-list {
   margin: 0;
   padding: 0;
@@ -479,12 +433,6 @@ SUMMARY LISTS
   text-align: center;
 }
 
-/*
-========================================
-REVIEW NOTICE
-========================================
-*/
-
 .summary-review-notice {
   padding: 21px 24px;
   border: 1px solid #fde68a;
@@ -505,12 +453,6 @@ REVIEW NOTICE
   color: #a16207;
   line-height: 1.6;
 }
-
-/*
-========================================
-EMPTY PAGE
-========================================
-*/
 
 .session-summary-empty {
   padding: 55px 30px;
@@ -538,12 +480,6 @@ EMPTY PAGE
   font-weight: 700;
   cursor: pointer;
 }
-
-/*
-========================================
-RESPONSIVE
-========================================
-*/
 
 @media (max-width: 1050px) {
   .summary-metadata-grid {
@@ -598,12 +534,6 @@ RESPONSIVE
   }
 }
 
-/*
-========================================
-PUBLISHED STATUS
-========================================
-*/
-
 .summary-published-badge {
   display: inline-block;
   margin-bottom: 9px;
@@ -615,12 +545,6 @@ PUBLISHED STATUS
   font-weight: 900;
   text-transform: uppercase;
 }
-
-/*
-========================================
-TOOLBAR ACTIONS
-========================================
-*/
 
 .summary-toolbar-actions {
   flex-shrink: 0;
@@ -670,11 +594,6 @@ TOOLBAR ACTIONS
   opacity: 0.5;
 }
 
-/*
-========================================
-SUMMARY EDITOR
-========================================
-*/
 
 .summary-editor {
   padding: 28px;
@@ -788,12 +707,6 @@ SUMMARY EDITOR
   opacity: 0.55;
 }
 
-/*
-========================================
-PUBLISHING PANEL
-========================================
-*/
-
 .summary-publishing-panel {
   padding: 25px 27px;
   border: 1px solid #bbf7d0;
@@ -880,12 +793,6 @@ PUBLISHING PANEL
   box-shadow: none;
   opacity: 0.5;
 }
-
-/*
-========================================
-NEW RESPONSIVE RULES
-========================================
-*/
 
 @media (max-width: 850px) {
   .summary-toolbar-actions {

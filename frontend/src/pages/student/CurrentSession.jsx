@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
 import StudentMCQ from "./StudentMCQ";
+import { recordEvaluationEvent } from "../../services/evaluationLogger";
+
+import {
+  API_URL,
+} from "../../config/api";
 
 import "./CurrentSession.css";
 
-const API_URL = "http://localhost:5000";
 
 function CurrentSession({
   session,
@@ -111,6 +115,22 @@ function CurrentSession({
         question: questionText.trim(),
       });
 
+      /*
+        Record only the anonymous feature event.
+        The question text is never sent to evaluation logging.
+      */
+
+      recordEvaluationEvent({
+        actorId: studentId,
+        eventType: "question_submitted",
+        sessionId: session._id,
+
+        metrics: {
+          questionCount: 1,
+          success: true,
+        },
+      });
+
       setQuestionText("");
 
       await Promise.all([
@@ -128,7 +148,7 @@ function CurrentSession({
 
       alert(
         error.response?.data?.message ||
-          "Error submitting question"
+        "Error submitting question"
       );
     } finally {
       setSubmittingQuestion(false);
@@ -218,12 +238,12 @@ function CurrentSession({
 
             {(session.subjectName ||
               session.subject?.subjectName) && (
-              <p>
-                <strong>Subject:</strong>{" "}
-                {session.subjectName ||
-                  session.subject?.subjectName}
-              </p>
-            )}
+                <p>
+                  <strong>Subject:</strong>{" "}
+                  {session.subjectName ||
+                    session.subject?.subjectName}
+                </p>
+              )}
 
             <p>
               <strong>Module:</strong>{" "}
@@ -334,7 +354,7 @@ function CurrentSession({
             <h2>Session Questions & Answers</h2>
 
             {questionsLoading &&
-            sessionQuestions.length === 0 ? (
+              sessionQuestions.length === 0 ? (
               <p>Loading session questions...</p>
             ) : sessionQuestions.length === 0 ? (
               <p>No questions submitted yet.</p>

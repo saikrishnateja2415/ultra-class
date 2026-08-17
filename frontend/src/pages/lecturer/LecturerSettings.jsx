@@ -4,9 +4,12 @@ import {
   useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./LecturerSettings.css";
 
-const API_URL = "http://localhost:5000";
 
 const readResponse = async (response) => {
   const contentType =

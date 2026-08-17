@@ -4,6 +4,10 @@ import {
     useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import axios from "axios";
 import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
@@ -52,11 +56,6 @@ function SessionSummary({ session, onBack, onEndSession }) {
     const sessionEnded =
         session?.status === "ended";
 
-    /*
-    ================================================
-    LOAD SAVED SUMMARY
-    ================================================
-    */
 
     const fetchSavedSummary =
         useCallback(async () => {
@@ -70,7 +69,7 @@ function SessionSummary({ session, onBack, onEndSession }) {
                 setError("");
 
                 const response = await axios.get(
-                    `http://localhost:5000/ai/sessions/${session._id}/summary`,
+                    `${API_URL}/ai/sessions/${session._id}/summary`,
                     {
                         params: {
                             lecturerId,
@@ -112,12 +111,6 @@ function SessionSummary({ session, onBack, onEndSession }) {
         fetchSavedSummary();
     }, [fetchSavedSummary]);
 
-    /*
-    ================================================
-    GENERATE OR REGENERATE
-    ================================================
-    */
-
     const generateSummary = async (
         forceRegenerate = false
     ) => {
@@ -147,7 +140,7 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setIsEditing(false);
 
             const response = await axios.post(
-                `http://localhost:5000/ai/sessions/${session._id}/summary`,
+                `${API_URL}/ai/sessions/${session._id}/summary`,
                 {
                     lecturerId,
                     forceRegenerate,
@@ -194,12 +187,6 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setGeneratingSummary(false);
         }
     };
-
-    /*
-    ================================================
-    EDIT SUMMARY
-    ================================================
-    */
 
     const startEditing = () => {
         if (!sessionSummary) {
@@ -274,7 +261,7 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setMessage("");
 
             const response = await axios.put(
-                `http://localhost:5000/ai/sessions/${session._id}/summary`,
+                `${API_URL}/ai/sessions/${session._id}/summary`,
                 {
                     lecturerId,
 
@@ -331,12 +318,6 @@ function SessionSummary({ session, onBack, onEndSession }) {
         }
     };
 
-    /*
-    ================================================
-    PUBLISH SUMMARY
-    ================================================
-    */
-
     const publishSummary = async () => {
         if (!sessionEnded) {
             setError(
@@ -360,7 +341,7 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setMessage("");
 
             const response = await axios.put(
-                `http://localhost:5000/ai/sessions/${session._id}/summary/publish`,
+                `${API_URL}/ai/sessions/${session._id}/summary/publish`,
                 {
                     lecturerId,
                 }
@@ -397,12 +378,6 @@ function SessionSummary({ session, onBack, onEndSession }) {
             setChangingPublishStatus(false);
         }
     };
-
-    /*
-========================================
-END SESSION FROM SUMMARY PAGE
-========================================
-*/
 
     const endSessionFromSummary = async () => {
         if (sessionEnded || endingSession) {
@@ -452,12 +427,6 @@ END SESSION FROM SUMMARY PAGE
         }
     };
 
-    /*
-    ================================================
-    UNPUBLISH SUMMARY
-    ================================================
-    */
-
     const unpublishSummary = async () => {
         const confirmed = window.confirm(
             "Unpublish this summary? Students will no longer be able to access it."
@@ -473,7 +442,7 @@ END SESSION FROM SUMMARY PAGE
             setMessage("");
 
             const response = await axios.put(
-                `http://localhost:5000/ai/sessions/${session._id}/summary/unpublish`,
+                `${API_URL}/ai/sessions/${session._id}/summary/unpublish`,
                 {
                     lecturerId,
                 }
@@ -500,12 +469,6 @@ END SESSION FROM SUMMARY PAGE
             setChangingPublishStatus(false);
         }
     };
-
-    /*
-    ================================================
-    DISPLAY HELPERS
-    ================================================
-    */
 
     const formatDate = (date) => {
         if (!date) {

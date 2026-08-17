@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./EngagementAnalysis.css";
 
 function EngagementAnalysis({
@@ -42,7 +46,7 @@ function EngagementAnalysis({
         setError("");
 
         const response = await axios.get(
-          `http://localhost:5000/ai/sessions/${session._id}/engagement-sentiment`,
+          `${API_URL}/ai/sessions/${session._id}/engagement-sentiment`,
           {
             params: {
               lecturerId,
@@ -93,7 +97,7 @@ function EngagementAnalysis({
       setError("");
 
       const response = await axios.post(
-        `http://localhost:5000/ai/sessions/${session._id}/engagement-sentiment`,
+        `${API_URL}/ai/sessions/${session._id}/engagement-sentiment`,
         {
           lecturerId,
           forceRegenerate,

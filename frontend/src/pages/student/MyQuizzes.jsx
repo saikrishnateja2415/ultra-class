@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./MyQuizzes.css";
 
-const API_URL = "http://localhost:5000";
 
 const formatDate = (value) => {
   if (!value) {

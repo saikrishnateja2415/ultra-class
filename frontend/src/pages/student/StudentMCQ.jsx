@@ -8,9 +8,12 @@ import {
 import axios from "axios";
 import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./StudentMCQ.css";
 
-const API_URL = "http://localhost:5000";
 
 function StudentMCQ({ session, user }) {
   const [polls, setPolls] = useState([]);

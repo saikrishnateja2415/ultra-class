@@ -1,93 +1,339 @@
-# Ultra_Class
+Ultra Class
 
+Ultra Class is a mobile-responsive, role-based classroom interaction system developed as an MSc project at the University of Strathclyde. It combines classroom session management, student questions, MCQ polling, AI-supported analysis and anonymised evaluation logging in one MERN-stack application.
 
+Features
 
-## Getting started
+Administrator: manages staff, students, courses, subjects, lecturer assignments, bulk uploads and settings.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Lecturer: creates sessions, shares QR/session codes, manages questions, runs MCQ polls, reviews participants, uses AI-supported insights and exports evaluation data.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Student: joins authorised sessions, submits questions, attempts quizzes, reviews quiz history and views lecturer-approved summaries.
 
-## Add your files
+AI support: question clustering, engagement and sentiment analysis, session summaries and teaching recommendations.
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Evaluation logging: records selected research tasks using anonymised participant codes and supports CSV/Excel export.
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/saikrishnateja/Ultra_Class.git
-git branch -M main
-git push -uf origin main
-```
+The postponed attendance concept is not part of the evaluated release and is retained only as future work.
 
-## Integrate with your tools
+Technology stack
 
-* [Set up project integrations](https://gitlab.com/saikrishnateja/Ultra_Class/-/settings/integrations)
+Layer
 
-## Collaborate with your team
+Technology
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Frontend
 
-## Test and Deploy
+React 19, Vite 8, Axios, React QR Code
 
-Use the built-in continuous integration in GitLab.
+Backend
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Node.js, Express 5
 
-***
+Database
 
-# Editing this README
+MongoDB and Mongoose
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Authentication
 
-## Suggestions for a good README
+JSON Web Tokens and bcrypt
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+AI integration
 
-## Name
-Choose a self-explaining name for your project.
+Google Gemini through @google/genai
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Export
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+ExcelJS and XLSX
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Prerequisites
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Node.js 20.19 or later (a current LTS release is recommended)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+npm
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+MongoDB Community Server or MongoDB Atlas
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Git
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+A modern browser
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+A valid Gemini API key for the AI features
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Check the installed tools in PowerShell:
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+node --version
+npm --version
+git --version
+mongod --version
 
-## License
-For open source projects, say how it is licensed.
+Project structure
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+ultra_class/
+├── backend/       # Express API, MongoDB models and AI services
+├── frontend/      # React and Vite user interface
+├── .gitignore
+└── README.md
+
+Step 1: Clone or open the project
+
+If it is already downloaded:
+
+cd "C:\path\to\ultra_class"
+
+Step 2: Install backend dependencies
+
+cd backend
+npm ci
+
+Use npm install instead when intentionally updating dependencies. Do not run both commands.
+
+Step 3: Configure the backend
+
+Copy-Item .env.example .env
+notepad .env
+
+Complete the following values:
+
+GEMINI_API_KEY=your_real_gemini_api_key
+GEMINI_MODEL=an_available_gemini_model
+JWT_SECRET=a_long_random_secret
+EVALUATION_ANONYMISATION_SECRET=a_different_long_random_secret
+MONGODB_URI=mongodb://127.0.0.1:27017/ultra_class
+PORT=5000
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DEFAULT_ADMIN_EMAIL=admin@ultraclass.local
+DEFAULT_ADMIN_PASSWORD=a_strong_private_password
+
+Security requirements:
+
+Never commit backend/.env.
+
+Use different long values for the JWT and anonymisation secrets.
+
+Keep JWT_SECRET stable between restarts; changing it invalidates existing login tokens.
+
+Never share API keys or passwords in screenshots, ZIP files or documentation.
+
+Step 4: Start MongoDB
+
+If MongoDB is installed as a Windows service, open an Administrator PowerShell:
+
+net start MongoDB
+
+Alternatively, run it manually:
+
+New-Item -ItemType Directory -Force "C:\data\db"
+mongod --dbpath "C:\data\db"
+
+Keep the manual MongoDB terminal open. MongoDB Atlas users should put their Atlas connection string in MONGODB_URI instead.
+
+Step 5: Run the backend
+
+From ultra_class\backend:
+
+npm run dev
+
+For execution without automatic restart:
+
+npm start
+
+Expected output includes:
+
+MongoDB Connected
+Server running on http://0.0.0.0:5000
+
+Open http://localhost:5000. It should report that the Ultra Class backend is running.
+
+Step 6: Install frontend dependencies
+
+Open a second PowerShell terminal:
+
+cd "C:\path\to\ultra_class\frontend"
+npm ci
+
+Step 7: Configure the frontend
+
+Copy-Item .env.example .env
+notepad .env
+
+For use on the same computer:
+
+VITE_API_URL=http://localhost:5000
+VITE_APP_URL=http://localhost:5173
+
+Step 8: Run the frontend
+
+For laptop-only access:
+
+npm run dev
+
+Open http://localhost:5173.
+
+For access from phones and other computers on the same network:
+
+npm run dev -- --host
+
+Step 9: Connect phones on the same Wi-Fi
+
+Find the laptop IPv4 address:
+
+ipconfig
+
+Locate the active Wi-Fi adapter. If the address is 192.168.1.115, update frontend/.env:
+
+VITE_API_URL=http://192.168.1.115:5000
+VITE_APP_URL=http://192.168.1.115:5173
+
+Update backend/.env:
+
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.115:5173
+
+Restart both servers after any .env change:
+
+# Backend terminal
+Ctrl+C
+npm run dev
+
+# Frontend terminal
+Ctrl+C
+npm run dev -- --host
+
+Open this on each phone:
+
+http://192.168.1.115:5173
+
+Replace the example with the actual address. Do not use localhost in a QR URL intended for another device. Allow Node.js through Windows Firewall on private networks if prompted. Institutional Wi-Fi may isolate devices; use a private router or mobile hotspot if required.
+
+Step 10: Initial setup and workflow
+
+On a new database, the backend creates the administrator specified by DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD. It is created only if it does not already exist.
+
+Recommended first-run sequence:
+
+Log in as administrator.
+
+Create courses and subjects.
+
+Create lecturer and student accounts.
+
+Assign lecturers and register students.
+
+Log in as a lecturer and create a session.
+
+Let registered students join using the code or QR.
+
+Students submit questions and attempt the MCQ poll.
+
+The lecturer reviews questions and AI features.
+
+End the session and publish the approved summary.
+
+Export anonymised evaluation data when required.
+
+Code-quality checks
+
+Run frontend linting and create the production build:
+
+cd frontend
+npm run lint
+npm run build
+
+Preview the build:
+
+npm run preview -- --host
+
+Check the backend entry file:
+
+cd ..\backend
+node --check server.js
+
+frontend/dist is generated by the build and is intentionally excluded from Git.
+
+Troubleshooting
+
+401 Unauthorized
+
+Log out, refresh and log in again. The token may be missing, expired or signed using an earlier JWT secret. If necessary, run this in the browser console:
+
+localStorage.removeItem("authToken");
+localStorage.removeItem("ultraClassUser");
+location.reload();
+
+API route not found
+
+Verify the frontend API URL and backend port. JavaScript URLs containing ${API_URL} must use backticks rather than quotation marks.
+
+Frontend origin is blocked
+
+Add the exact frontend address to FRONTEND_ORIGINS and restart the backend.
+
+Phone cannot connect
+
+Use npm run dev -- --host.
+
+Use the laptop IPv4 address, not localhost.
+
+Confirm all devices use the same network.
+
+Check Windows Firewall and whether the IP changed.
+
+Use a hotspot if the Wi-Fi isolates devices.
+
+MongoDB connection error
+
+Confirm MongoDB is running and use:
+
+MONGODB_URI=mongodb://127.0.0.1:27017/ultra_class
+
+AI generation fails
+
+Confirm that the Gemini key and model are valid, the computer has internet access and the selected model is available to the API key.
+
+Analytics displays an old question count
+
+Return to Session Details and reopen Analytics. This release refreshes session questions before loading the page.
+
+Security and privacy
+
+Passwords are hashed using bcrypt.
+
+Protected routes use JWT authentication and role checks.
+
+Only registered students can join relevant subject sessions.
+
+Gemini requests pass through the backend, keeping the API key out of browsers.
+
+Identifiable participant data is not intentionally submitted to Gemini.
+
+Evaluation events use HMAC-based anonymous participant codes.
+
+Real environment files and generated dependencies are excluded from Git.
+
+Evaluation scope
+
+The prototype was evaluated in one structured session with eight student participants. No lecturer volunteers were recruited during the available period. Lecturer functionality was technically tested but not evaluated by representative teaching staff. The results provide preliminary usability evidence and do not establish long-term improvements in learning outcomes.
+
+Future work
+
+Larger and longitudinal student and lecturer evaluation.
+
+Accessibility and multilingual improvements.
+
+Institutional learning-platform integration.
+
+Production cloud deployment, monitoring and backups.
+
+A privacy-preserving attendance mechanism, subject to separate design and ethical review.
+
+Author
+
+Sai Krishna Teja Nerusu
+
+MSc Advanced Computer Science with Artificial Intelligence
+
+University of Strathclyde
+
+Academic project notice
+
+Ultra Class is an academic prototype. It requires production-grade configuration, security review and target-environment testing before institutional or public deployment.

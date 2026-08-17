@@ -5,6 +5,10 @@ import {
   useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import axios from "axios";
 
 import "./SessionParticipants.css";
@@ -70,7 +74,7 @@ function SessionParticipants({
         setErrorMessage("");
 
         const response = await axios.get(
-          `http://localhost:5000/lecturer/session/${session._id}/participants`
+          `${API_URL}/lecturer/session/${session._id}/participants`
         );
 
         setParticipants(

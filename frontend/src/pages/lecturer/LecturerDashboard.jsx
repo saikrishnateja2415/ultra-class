@@ -4,6 +4,10 @@ import {
   useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import axios from "axios";
 
 import Header from "../../components/Header";
@@ -55,7 +59,7 @@ function LecturerDashboard({ user, logout }) {
             async (session) => {
               try {
                 const response = await axios.get(
-                  `http://localhost:5000/questions/${session._id}`
+                  `${API_URL}/questions/${session._id}`
                 );
 
                 return (
@@ -123,7 +127,7 @@ function LecturerDashboard({ user, logout }) {
         setLoadingSessions(true);
 
         const response = await axios.get(
-          `http://localhost:5000/lecturer/sessions/${lecturerId}`
+          `${API_URL}/lecturer/sessions/${lecturerId}`
         );
 
         const lecturerSessions =
@@ -205,7 +209,7 @@ function LecturerDashboard({ user, logout }) {
 
     try {
       await axios.delete(
-        `http://localhost:5000/delete-session/${sessionId}`
+        `${API_URL}/delete-session/${sessionId}`
       );
 
       setSelectedSession(null);
@@ -240,7 +244,7 @@ function LecturerDashboard({ user, logout }) {
       }
 
       const response = await axios.put(
-        `http://localhost:5000/lecturer/sessions/${sessionId}/end`,
+        `${API_URL}/lecturer/sessions/${sessionId}/end`,
         {
           lecturerId,
         }

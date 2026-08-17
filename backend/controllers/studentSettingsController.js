@@ -3,13 +3,6 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const Student = require("../models/Student");
 
-/*
-  Build the student settings response in one consistent shape.
-
-  Identity and curriculum information is returned for display,
-  but only qualification and yearOfStudy can be updated by the
-  student settings endpoint.
-*/
 
 const buildStudentSettings = async (userId) => {
   const user = await User.findOne({
@@ -63,11 +56,6 @@ const buildStudentSettings = async (userId) => {
   };
 };
 
-/* =================================================
-   GET STUDENT SETTINGS
-
-   GET /student/settings/:userId
-   ================================================= */
 
 const getStudentSettings = async (req, res) => {
   try {
@@ -103,14 +91,7 @@ const getStudentSettings = async (req, res) => {
   }
 };
 
-/* =================================================
-   UPDATE SAFE STUDENT PROFILE FIELDS
 
-   PUT /student/settings/:userId/profile
-
-   Name, email, student ID, course, subjects, role and
-   status are deliberately ignored and cannot be changed.
-   ================================================= */
 
 const updateStudentSettingsProfile = async (req, res) => {
   try {
@@ -209,11 +190,7 @@ const updateStudentSettingsProfile = async (req, res) => {
   }
 };
 
-/* =================================================
-   CHANGE STUDENT PASSWORD
 
-   PUT /student/settings/:userId/password
-   ================================================= */
 
 const changeStudentSettingsPassword = async (req, res) => {
   try {

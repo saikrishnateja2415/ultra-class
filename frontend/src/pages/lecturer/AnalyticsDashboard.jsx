@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import "./AnalyticsDashboard.css";
 
 function AnalyticsDashboard({
@@ -32,7 +36,7 @@ function AnalyticsDashboard({
         setError("");
 
         const response = await axios.get(
-          `http://localhost:5000/lecturer/session/${session._id}/participants`
+          `${API_URL}/lecturer/session/${session._id}/participants`
         );
 
         setParticipantData({

@@ -1,80 +1,153 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import axios from "axios";
-import { recordEvaluationEvent } from "../../services/evaluationLogger";
+
+
+import {
+  recordEvaluationEvent,
+} from "../../services/evaluationLogger";
+
+import {
+  API_URL,
+} from "../../config/api";
 
 import "./CreateSession.css";
 
-function CreateSession({ user, onSessionCreated, onOpenSessions }) {
-  const [title, setTitle] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+function CreateSession({
+  user,
+  onSessionCreated,
+  onOpenSessions,
+}) {
+  const [title, setTitle] =
+    useState("");
 
-  const [assignedSubjects, setAssignedSubjects] = useState([]);
+  const [subjectId, setSubjectId] =
+    useState("");
 
-  const [subjectsLoading, setSubjectsLoading] = useState(true);
-  const [creatingSession, setCreatingSession] = useState(false);
+  const [
+    assignedSubjects,
+    setAssignedSubjects,
+  ] = useState([]);
 
-  const [createdSession, setCreatedSession] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [
+    subjectsLoading,
+    setSubjectsLoading,
+  ] = useState(true);
 
+  const [
+    creatingSession,
+    setCreatingSession,
+  ] = useState(false);
+
+  const [
+    createdSession,
+    setCreatedSession,
+  ] = useState(null);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const lecturerId =
+    user?.id || user?._id;
+
+  /*
+    Load the subjects assigned to the authenticated
+    lecturer.
+
+    The backend verifies that the lecturer ID in the
+    URL matches the ID contained in the JWT token.
+  */
 
   useEffect(() => {
-    const lecturerId = user?.id || user?._id;
-
     if (!lecturerId) {
       setSubjectsLoading(false);
-      setErrorMessage("Lecturer account information is unavailable.");
-      return;
+
+      setErrorMessage(
+        "Lecturer account information is unavailable."
+      );
+
+      return undefined;
     }
 
-    let cancelled = false;
+    let requestCancelled = false;
 
-    const loadAssignedSubjects = async () => {
-      try {
-        setErrorMessage("");
+    const loadAssignedSubjects =
+      async () => {
+        try {
+          setSubjectsLoading(true);
+          setErrorMessage("");
 
-        const response = await axios.get(
-          `http://localhost:5000/lecturer/${lecturerId}/subjects`
-        );
+          const response =
+            await axios.get(
+              `${API_URL}/lecturer/${lecturerId}/subjects`
+            );
 
-        if (!cancelled) {
-          setAssignedSubjects(response.data.subjects || []);
-        }
-      } catch (error) {
-        console.log("Load assigned subjects error:", error);
-
-        if (!cancelled) {
-          setAssignedSubjects([]);
-
-          setErrorMessage(
-            error.response?.data?.message ||
-              "Unable to load your assigned subjects."
+          if (!requestCancelled) {
+            setAssignedSubjects(
+              response.data.subjects ||
+                []
+            );
+          }
+        } catch (error) {
+          console.log(
+            "Load assigned subjects error:",
+            error
           );
+
+          if (!requestCancelled) {
+            setAssignedSubjects([]);
+
+            setErrorMessage(
+              error.response?.data
+                ?.message ||
+                "Unable to load your assigned subjects."
+            );
+          }
+        } finally {
+          if (!requestCancelled) {
+            setSubjectsLoading(false);
+          }
         }
-      } finally {
-        if (!cancelled) {
-          setSubjectsLoading(false);
-        }
-      }
-    };
+      };
 
     loadAssignedSubjects();
 
     return () => {
-      cancelled = true;
+      requestCancelled = true;
     };
-  }, [user?.id, user?._id]);
+  }, [lecturerId]);
 
+  /*
+    Create a new classroom session.
 
-  const createSession = async (event) => {
+    lecturerId is deliberately not included in the
+    request body. The backend obtains the lecturer's
+    identity securely from the verified JWT token.
+  */
+
+  const createSession = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (!subjectId) {
-      setErrorMessage("Please select an assigned subject.");
+      setErrorMessage(
+        "Please select an assigned subject."
+      );
+
       return;
     }
 
     if (!title.trim()) {
-      setErrorMessage("Please enter the session title.");
+      setErrorMessage(
+        "Please enter the session title."
+      );
+
       return;
     }
 
@@ -82,39 +155,50 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
       setCreatingSession(true);
       setErrorMessage("");
 
-      const response = await axios.post(
-        "http://localhost:5000/lecturer/sessions",
-        {
-          title: title.trim(),
-          subjectId,
-          lecturerId: user?.id || user?._id,
-        }
-      );
+      const response =
+        await axios.post(
+          `${API_URL}/lecturer/sessions`,
+          {
+            title: title.trim(),
+            subjectId,
+          }
+        );
 
-      const newSession = response.data.session;
+      const newSession =
+        response.data.session;
 
       recordEvaluationEvent({
-        actorId: user?.id || user?._id,
-        eventType: "session_created",
-        sessionId: newSession._id,
-
+        actorId: lecturerId,
+        eventType:
+          "session_created",
+        sessionId:
+          newSession._id,
         metrics: {
           success: true,
         },
       });
 
-      setCreatedSession(newSession);
+      setCreatedSession(
+        newSession
+      );
+
       setTitle("");
       setSubjectId("");
 
       if (onSessionCreated) {
-        await onSessionCreated(newSession);
+        await onSessionCreated(
+          newSession
+        );
       }
     } catch (error) {
-      console.log("Create session error:", error);
+      console.log(
+        "Create session error:",
+        error
+      );
 
       setErrorMessage(
-        error.response?.data?.message ||
+        error.response?.data
+          ?.message ||
           "Unable to create the session."
       );
     } finally {
@@ -122,37 +206,49 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
     }
   };
 
+  const copySessionCode =
+    async () => {
+      if (
+        !createdSession?.sessionCode
+      ) {
+        return;
+      }
 
-  const copySessionCode = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        createdSession.sessionCode
-      );
+      try {
+        await navigator.clipboard.writeText(
+          createdSession.sessionCode
+        );
 
-      alert("Session code copied successfully");
-    } catch (error) {
-      console.log("Copy session code error:", error);
+        alert(
+          "Session code copied successfully"
+        );
+      } catch (error) {
+        console.log(
+          "Copy session code error:",
+          error
+        );
 
-      alert(
-        `Session code: ${createdSession.sessionCode}`
-      );
-    }
-  };
-
+        alert(
+          `Session code: ${createdSession.sessionCode}`
+        );
+      }
+    };
 
   if (createdSession) {
     return (
-      <section className="create-session-card">
-        <div className="session-created-result">
-          <span className="session-created-badge">
+      <section className="create-session-page">
+        <div className="created-session-card">
+          <span className="created-session-badge">
             Session created successfully
           </span>
 
-          <h2>{createdSession.title}</h2>
+          <h2>
+            {createdSession.title}
+          </h2>
 
           <p className="created-subject">
-            {createdSession.subjectName} (
-            {createdSession.moduleCode})
+            {createdSession.subjectName}{" "}
+            ({createdSession.moduleCode})
           </p>
 
           <p className="code-label">
@@ -164,21 +260,26 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
           </strong>
 
           <p className="access-message">
-            Only students registered for this subject
-            can use this session code.
+            Only students registered
+            for this subject can use
+            this session code.
           </p>
 
           <div className="created-session-actions">
             <button
               type="button"
-              onClick={copySessionCode}
+              onClick={
+                copySessionCode
+              }
             >
               Copy Code
             </button>
 
             <button
               type="button"
-              onClick={onOpenSessions}
+              onClick={
+                onOpenSessions
+              }
             >
               Open Sessions
             </button>
@@ -186,7 +287,11 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
             <button
               type="button"
               className="create-another-button"
-              onClick={() => setCreatedSession(null)}
+              onClick={() =>
+                setCreatedSession(
+                  null
+                )
+              }
             >
               Create Another
             </button>
@@ -196,15 +301,18 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
     );
   }
 
-
   return (
-    <section className="create-session-card">
-      <div className="create-session-heading">
-        <h2>Create New Class Session</h2>
+    <section className="create-session-page">
+      <div className="create-session-header">
+        <h2>
+          Create New Class Session
+        </h2>
 
         <p>
-          Select one of your assigned subjects and
-          enter the topic for this classroom session.
+          Select one of your
+          assigned subjects and
+          enter the topic for this
+          classroom session.
         </p>
       </div>
 
@@ -221,12 +329,16 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
             id="session-subject"
             value={subjectId}
             onChange={(event) => {
-              setSubjectId(event.target.value);
+              setSubjectId(
+                event.target.value
+              );
+
               setErrorMessage("");
             }}
             disabled={
               subjectsLoading ||
-              assignedSubjects.length === 0
+              assignedSubjects.length ===
+                0
             }
           >
             <option value="">
@@ -235,24 +347,34 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
                 : "Select an assigned subject"}
             </option>
 
-            {assignedSubjects.map((subject) => (
-              <option
-                key={subject._id}
-                value={subject._id}
-              >
-                {subject.subjectCode} -{" "}
-                {subject.subjectName}
-              </option>
-            ))}
+            {assignedSubjects.map(
+              (subject) => (
+                <option
+                  key={subject._id}
+                  value={subject._id}
+                >
+                  {
+                    subject.subjectCode
+                  }{" "}
+                  -{" "}
+                  {
+                    subject.subjectName
+                  }
+                </option>
+              )
+            )}
           </select>
         </div>
 
         {!subjectsLoading &&
-          assignedSubjects.length === 0 &&
+          assignedSubjects.length ===
+            0 &&
           !errorMessage && (
             <div className="create-session-warning">
-              No active subjects are assigned to your
-              account. Please contact the administrator.
+              No active subjects are
+              assigned to your
+              account. Please contact
+              the administrator.
             </div>
           )}
 
@@ -268,7 +390,10 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
             value={title}
             maxLength={150}
             onChange={(event) => {
-              setTitle(event.target.value);
+              setTitle(
+                event.target.value
+              );
+
               setErrorMessage("");
             }}
           />
@@ -285,7 +410,8 @@ function CreateSession({ user, onSessionCreated, onOpenSessions }) {
           className="create-session-submit"
           disabled={
             subjectsLoading ||
-            assignedSubjects.length === 0 ||
+            assignedSubjects.length ===
+              0 ||
             creatingSession
           }
         >

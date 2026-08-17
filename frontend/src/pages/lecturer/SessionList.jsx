@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 
+import {
+  APP_URL,
+} from "../../config/api";
+
 import "./SessionList.css";
-
-const APP_URL =
-  import.meta.env.VITE_APP_URL ||
-  window.location.origin;
-
 
 
 function SessionList({

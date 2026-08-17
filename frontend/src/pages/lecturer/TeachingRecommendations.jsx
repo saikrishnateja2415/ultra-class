@@ -4,6 +4,10 @@ import {
   useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import axios from "axios";
 
 import "./TeachingRecommendations.css";
@@ -47,7 +51,7 @@ function TeachingRecommendations({
         setError("");
 
         const response = await axios.get(
-          `http://localhost:5000/ai/sessions/${session._id}/teaching-recommendations`,
+          `${API_URL}/ai/sessions/${session._id}/teaching-recommendations`,
           {
             params: {
               lecturerId,
@@ -115,7 +119,7 @@ function TeachingRecommendations({
       setError("");
 
       const response = await axios.post(
-        `http://localhost:5000/ai/sessions/${session._id}/teaching-recommendations`,
+        `${API_URL}/ai/sessions/${session._id}/teaching-recommendations`,
         {
           lecturerId,
           forceRegenerate,

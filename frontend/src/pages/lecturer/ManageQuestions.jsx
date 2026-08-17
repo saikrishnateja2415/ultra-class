@@ -4,6 +4,10 @@ import {
   useState,
 } from "react";
 
+import {
+  API_URL,
+} from "../../config/api";
+
 import axios from "axios";
 import { recordEvaluationEvent } from "../../services/evaluationLogger";
 
@@ -54,7 +58,7 @@ function ManageQuestions({ session, onBack }) {
       setLoadingQuestions(true);
 
       const response = await axios.get(
-        `http://localhost:5000/questions/${session._id}`
+        `${API_URL}/questions/${session._id}`
       );
 
       setQuestions(
@@ -87,7 +91,7 @@ function ManageQuestions({ session, onBack }) {
         setClusterError("");
 
         const response = await axios.get(
-          `http://localhost:5000/ai/sessions/${session._id}/question-clusters`,
+          `${API_URL}/ai/sessions/${session._id}/question-clusters`,
           {
             params: {
               lecturerId,
@@ -155,7 +159,7 @@ function ManageQuestions({ session, onBack }) {
       setClusterMessage("");
 
       const response = await axios.post(
-        `http://localhost:5000/ai/sessions/${session._id}/question-clusters`,
+        `${API_URL}/ai/sessions/${session._id}/question-clusters`,
         {
           lecturerId,
           forceRegenerate,
@@ -209,7 +213,7 @@ function ManageQuestions({ session, onBack }) {
   const markAnswered = async (id) => {
     try {
       await axios.put(
-        `http://localhost:5000/questions/${id}/answer`
+        `${API_URL}/questions/${id}/answer`
       );
 
       await fetchQuestions();
@@ -229,7 +233,7 @@ function ManageQuestions({ session, onBack }) {
   const togglePin = async (id) => {
     try {
       await axios.put(
-        `http://localhost:5000/questions/${id}/pin`
+        `${API_URL}/questions/${id}/pin`
       );
 
       await fetchQuestions();
@@ -257,7 +261,7 @@ function ManageQuestions({ session, onBack }) {
 
     try {
       await axios.delete(
-        `http://localhost:5000/questions/${id}`
+        `${API_URL}/questions/${id}`
       );
 
       await fetchQuestions();
@@ -294,7 +298,7 @@ function ManageQuestions({ session, onBack }) {
 
     try {
       await axios.put(
-        `http://localhost:5000/questions/${id}/respond`,
+        `${API_URL}/questions/${id}/respond`,
         {
           answer: answers[id].trim(),
         }
